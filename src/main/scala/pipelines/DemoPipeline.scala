@@ -1,23 +1,32 @@
 package pipelines
 
 import org.apache.spark
-import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
+import org.apache.spark.sql.{DataFrame, Dataset, SparkSession, types}
 import org.apache.spark.ml.{Pipeline, PipelineModel, PipelineStage, Transformer}
 import org.apache.spark.ml.param.Param
+import org.apache.spark.sql.types.{DataType, DoubleType, StringType, StructField, StructType}
 import transfomers.demopipeline.DemoFilter1
 
-class DemoPipeline(implicit spark: SparkSession = SparkSession.builder.getOrCreate()) extends Pipeline {
+class DemoPipeline(irisFilePath: String)(implicit spark: SparkSession = SparkSession.builder.getOrCreate()) extends GenericPipeline {
   val filePath = new Param[String](this, "filePath", "s3 location to read data from")
   def setFilePath(value: String): this.type = set(filePath, value)
+  setFilePath(irisFilePath)
 
-  val df: DataFrame = spark.read.csv(filePath.toString())
+  val df: DataFrame = spark.read.schema(StructType(Array(
+    StructField("petal_length", DoubleType, nullable = false),
+    StructField("petal_width", DoubleType, nullable = false),
+    StructField("sepal_length", DoubleType, nullable = false),
+    StructField("sepal_width", DoubleType, nullable = false),
+    StructField("species", StringType, nullable = false)
+  ))).csv(irisFilePath)
+
   this.setStages(Array(
     new DemoFilter1()
   ))
-  def fit(): PipelineModel = super.fit(df)
+  def run(): DataFrame = super.fit(df).transform(df)
 
 }
 
 object DemoPipeline {
-  def apply(): DemoPipeline = new DemoPipeline()
+  def apply(irisFilePath: String): DemoPipeline = new DemoPipeline(irisFilePath)
 }

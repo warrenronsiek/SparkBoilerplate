@@ -1,16 +1,13 @@
-import org.apache.spark.sql.SparkSession
-import pipelines.DemoPipeline
+import org.apache.spark.sql.{DataFrame, SparkSession}
+import pipelines.{DemoPipeline, GenericPipeline}
 
 object PipelineExecutor extends App {
-  val spark = SparkSession
-    .builder
-    .appName("DemoSpark")
-    .getOrCreate()
 
-  val pipeline = args(0) match {
+  val pipeline: GenericPipeline = args(0) match {
     case "DemoPipeline" =>
-      DemoPipeline()
+      DemoPipeline(args(1))
+    case _ => throw new IllegalArgumentException("Provided pipeline name does not match an existing pipeline.")
   }
 
-  spark.stop()
+  pipeline.run()
 }
