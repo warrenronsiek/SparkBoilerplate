@@ -9,11 +9,8 @@ import transfomers.generic.{AllPurposeTransformer, VerificationTransformer}
 import org.apache.log4j.Logger
 
 class DemoFilter1Validator extends VerificationTransformer {
-
   val verifications: Array[CheckWithLastConstraintFilterable] = Array(
     Check(CheckLevel.Error, "verify the DemoFilter1 removed all the Iris-setosa")
       .isContainedIn("species", Array("Iris-versicolor", "Iris-virginica"))
   )
-
-  override def transformSchema(schema: StructType): StructType = schema
 }
