@@ -1,7 +1,7 @@
 package transfomers.generic
 
-import com.amazon.deequ.{VerificationResult, VerificationSuite}
-import com.amazon.deequ.checks.{Check, CheckLevel, CheckStatus, CheckWithLastConstraintFilterable}
+import com.amazon.deequ.VerificationSuite
+import com.amazon.deequ.checks.{CheckStatus, CheckWithLastConstraintFilterable}
 import com.amazon.deequ.constraints.ConstraintStatus
 import org.apache.log4j.Logger
 import org.apache.spark.sql.types.StructType
