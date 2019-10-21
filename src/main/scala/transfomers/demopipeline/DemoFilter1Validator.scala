@@ -6,7 +6,7 @@ import com.amazon.deequ.constraints.ConstraintStatus
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.{DataFrame, Dataset}
 import transfomers.generic.AllPurposeTransformer
-import org.apache.log4j.{Level, Logger}
+import org.apache.log4j.Logger
 
 class DemoFilter1Validator extends AllPurposeTransformer {
 
@@ -31,5 +31,4 @@ class DemoFilter1Validator extends AllPurposeTransformer {
   }
 
   override def transformSchema(schema: StructType): StructType = schema
-
 }
