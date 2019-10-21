@@ -24,7 +24,6 @@ class DemoPipeline(irisFilePath: String)(implicit spark: SparkSession = SparkSes
     new DemoFilter1(),
     new DemoFilter1Validator()
   ))
-  def run(): DataFrame = super.fit(df).transform(df)
 
 }
 
