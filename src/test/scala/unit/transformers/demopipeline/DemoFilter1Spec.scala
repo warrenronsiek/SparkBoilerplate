@@ -11,12 +11,12 @@ import schemas.Iris
 class DemoFilter1Spec extends FlatSpec with SparkContextMixin with SnapshotTest{
   import spark.sqlContext.implicits._
   import spark.sqlContext.createDataFrame
-  val testDF: DataFrame = createDataFrame(spark.sparkContext.parallelize(
+  val irisDf: DataFrame = createDataFrame(spark.sparkContext.parallelize(
     Seq(
       Row(1.0, 2.0, 3.0, 3.0, "Iris-versicolor"),
       Row(3.0, 4.0, 5.0, 6.0, "Iris-setosa"))), Iris.schema)
 
-  testDF.show()
-  System.out.println(compareSnapshot(testDF, testDF, List("petal_length", "species", "petal_width")))
-
+  "DemoFilter1" should "match snapshot" in {
+    assert(assertSnapshotNoDiffRows("iris", irisDf, List("sepal_length", "species")))
+  }
 }
