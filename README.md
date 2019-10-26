@@ -8,7 +8,7 @@ Features (WIP)
 - [x] testing with deequ
   - [x] deequ in integration tests
   - [x] deequ as a pipeline runtime validation mixin
-- [ ] Snapshot based dataframe testing
+- [x] Snapshot based dataframe testing
 - [ ] Transformers for AWS Athena - query intermediate tables in Athena
 - [ ] Pipeline S3 checkpoints save state to s3 and, in the event of failure, re-run the pipeline from the last checkpoint
 - [ ] Local docker container for profiling integration tests
@@ -21,3 +21,10 @@ tests to see if the data output from pipelines makes sense, but more importantly
 The idea is that changes is pipeline logic may not be noticeable just on test data, and that these changes can have
 unforeseen consequences on your live data. Having Deequ do testing as part of the pipeline can works to mitigate
 these issues.
+
+Snapshot Testing
+----------------
+Instead of painstakingly writing out the passing criteria for a test on a dataframe, the idea is to save
+a copy of the dataframe and then compare all future test rus against the copy. Writing tests like this
+is much less of a chore and encourages high test converge. This is particularly true for unit tests where 
+using Deequ doesn't make much sense. 

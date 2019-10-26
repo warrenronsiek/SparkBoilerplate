@@ -16,7 +16,10 @@ class DemoFilter1Spec extends FlatSpec with SparkContextMixin with SnapshotTest{
       Row(1.0, 2.0, 3.0, 3.0, "Iris-versicolor"),
       Row(3.0, 4.0, 5.0, 5.0, "Iris-setosa"))), Iris.schema)
 
+  val filter: DemoFilter1 = new DemoFilter1()
+  val filtered: DataFrame = filter.transform(irisDf)
+
   "DemoFilter1" should "match snapshot" in {
-    assert(assertSnapshot("iris", irisDf, List("species")))
+    assert(assertSnapshot("iris", filtered, List("species")))
   }
 }
