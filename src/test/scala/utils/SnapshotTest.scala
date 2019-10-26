@@ -1,48 +1,45 @@
 package utils
 
 import java.io.File
+import java.net.URL
 
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions._
+import org.apache.log4j.Logger
 
 import scala.collection.GenSeq
 
 
 trait SnapshotTest extends SparkProvider {
+
   import spark.sqlContext.implicits._
-//  private val resourceDir = this.getClass.getResource(
-//    (this.getClass.getPackage.getName + this.getClass.getName.toLowerCase()).replace('.', '/'))
-//  private val snapshotFolder = new File(resourceDir.getPath)
 
-//  private def saveSnapshot(snapshotName: String, dataFrame: DataFrame): Unit = {
-//    dataFrame.write.parquet(Array(snapshotFolder.getAbsolutePath, snapshotName).mkString("/"))
-//  }
-//
-//  private def readSnapshot(snapshotName: String): DataFrame = {
-//    spark.read.parquet(Array(snapshotFolder.getAbsolutePath, snapshotName).mkString("/"))
-//  }
+  val logger: Logger = Logger.getLogger("TestLogger")
 
-  class Diff[T <: GenSeq[T]](newVal: T, snapshotVal: T) {
-    def this(noDiff: T) = {
-      this(noDiff, noDiff)
-    }
+  private val resource: URL = this.getClass.getResource("/" + this.getClass.getName.toLowerCase().replace('.', '/'))
+  private val resourceDir = new File(resource.getPath)
+  if (!(resourceDir.exists())){
+    resourceDir.mkdirs()
+  }
+  System.out.println(resourceDir.toString)
 
-    val diff: GenSeq[T] =  newVal diff snapshotVal
+  private def saveSnapshot(snapshotName: String, dataFrame: DataFrame): Unit = {
+    dataFrame.write.parquet(Array(resource.getPath, snapshotName).mkString("/"))
+  }
+  private def readSnapshot(snapshotName: String): DataFrame = {
+    spark.read.parquet(Array(resource.getPath, snapshotName).mkString("/"))
   }
 
-  private def colCompare[T]() = udf((newVal: T, snapshotVal: T) => {
-    if (newVal == snapshotVal) {
-      newVal
-    } else {
-      new Diff[T](newVal, snapshotVal)
+  def compareSnapshot(newDF: DataFrame, snapshotDF: DataFrame, sortBy: List[String]): Boolean = {
+    val hd :: tail = sortBy
+    val newSorted = newDF.sort(hd, tail: _*).withColumn("index", monotonically_increasing_id())
+    val snapshotSorted = snapshotDF.sort(hd, tail: _*).withColumn("index", monotonically_increasing_id())
+    val diffRows = newSorted.union(snapshotSorted).except(newSorted.intersect(snapshotSorted))
+    if (diffRows.count() > 0) {
+      logger.error("ERROR: snapshot matching failure")
+      diffRows.show()
+      return false
     }
-  })
-
-  def compareSnapshot(newDF:DataFrame, snapshotDF:DataFrame, sortBy:List[String]): Any = {
-    val hd::tail = sortBy
-//    val newSorted = newDF.sort(hd, tail:_*).withColumn("index", monotonically_increasing_id())
-//    val snapshotSorted = snapshotDF.sort(hd, tail:_*).withColumn("index", monotonically_increasing_id())
-//    newSorted.join(snapshotSorted, $"index").columns
-
+    true
   }
 }
