@@ -5,6 +5,7 @@ import org.apache.spark.sql.{DataFrame, Dataset, SparkSession, types}
 import org.apache.spark.ml.{Pipeline, PipelineModel, PipelineStage, Transformer}
 import org.apache.spark.ml.param.Param
 import org.apache.spark.sql.types.{DataType, DoubleType, StringType, StructField, StructType}
+import schemas.Iris
 import transfomers.demopipeline.{DemoFilter1, DemoFilter1Validator}
 
 class DemoPipeline(irisFilePath: String)(implicit spark: SparkSession = SparkSession.builder.getOrCreate()) extends GenericPipeline {
@@ -12,13 +13,7 @@ class DemoPipeline(irisFilePath: String)(implicit spark: SparkSession = SparkSes
   def setFilePath(value: String): this.type = set(filePath, value)
   setFilePath(irisFilePath)
 
-  val df: DataFrame = spark.read.schema(StructType(Array(
-    StructField("petal_length", DoubleType, nullable = false),
-    StructField("petal_width", DoubleType, nullable = false),
-    StructField("sepal_length", DoubleType, nullable = false),
-    StructField("sepal_width", DoubleType, nullable = false),
-    StructField("species", StringType, nullable = false)
-  ))).csv(irisFilePath)
+  val df: DataFrame = spark.read.schema(Iris.schema).csv(irisFilePath)
 
   this.setStages(Array(
     new DemoFilter1(),
