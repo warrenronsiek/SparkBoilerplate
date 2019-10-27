@@ -4,18 +4,19 @@ import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Suite}
 import com.amazon.deequ.VerificationSuite
 import com.amazon.deequ.checks.{Check, CheckLevel, CheckStatus}
-import utils.SparkContextMixin
+import utils.{SnapshotTest, SparkContextMixin}
 
-class DemoPipelineSpec extends FlatSpec with SparkContextMixin {
+class DemoPipelineSpec extends FlatSpec with SnapshotTest {
   val demoPipeline = new DemoPipeline(getClass.getResource("/iris.csv").getPath)
   val result: DataFrame = demoPipeline.run()
 
-  "iris dataframe" should "pass deequ validation" in {
+  "iris datafraome" should "match snapshot" in {
+    assertSnapshot("irisFiltered", result, List("sepal_length", "sepal_width", "species"))
+  }
+
+  it should "pass deequ validation" in {
     val verificationSuite = VerificationSuite().onData(result)
       .addCheck(Check(CheckLevel.Error, "simple iris tests")
-          .hasSize(_ == 100)
-          .isComplete("sepal_width")
-          .isComplete("species")
           .isContainedIn("species", Array("Iris-versicolor", "Iris-virginica"))
       ).run()
 

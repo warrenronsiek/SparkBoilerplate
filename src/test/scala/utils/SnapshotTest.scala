@@ -19,7 +19,9 @@ trait SnapshotTest extends SparkProvider {
 
   private def saveSnapshot(snapshotName: String, dataFrame: DataFrame): Unit = {
     val dir = new Directory(new File(Array(testResources, resourcePath, snapshotName).mkString("/")))
-    dir.deleteRecursively()
+    if (dir.exists) {
+      dir.deleteRecursively()
+    }
     dataFrame.write.parquet(Array(testResources, resourcePath, snapshotName).mkString("/"))
   }
 
