@@ -5,14 +5,12 @@ Simple spark project template to be used/referenced in future development.
 
 Features (WIP)
 --------
-- [x] testing with deequ
-  - [x] deequ in integration tests
-  - [x] deequ for doing runtime data validation
-- [x] Snapshot based dataframe testing
-- [ ] Transformers for AWS Athena - query intermediate tables in Athena
-- [ ] Pipeline S3 checkpoints save state to s3 and, in the event of failure, re-run the pipeline from the last checkpoint
-- [ ] Local docker container for profiling integration tests
-- [ ] Command line interface for launching jobs and creating clusters
+- [x] runtime/integration testing with deequ
+- [x] snapshot based unit testing
+- [ ] command line interface for launching jobs and creating clusters
+- [ ] transformers for AWS Athena - query intermediate tables in Athena
+- [ ] pipeline S3 checkpoints save state to s3 and, in the event of failure, re-run the pipeline from the last checkpoint
+- [ ] local docker container for profiling integration tests
 
 Testing with Deequ
 ------------------

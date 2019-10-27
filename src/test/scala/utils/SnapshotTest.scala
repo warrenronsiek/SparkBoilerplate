@@ -43,11 +43,8 @@ trait SnapshotTest extends SparkProvider {
     ).filter(dataset => dataset.count() > 0)
     if (mismatchedCols.length > 0) {
       logger.error("ERROR: snapshot matching failure")
-      logger.error("New Dataframe:")
       newSorted.show()
-      logger.error("Snapshot:")
       snapshotSorted.show()
-      logger.debug("Diffs:")
       mismatchedCols.filter(dataset => dataset.count() > 0).foreach(dataset => dataset.show())
       return false
     }

@@ -10,11 +10,7 @@ class DemoPipelineSpec extends FlatSpec with SparkContextMixin {
   val demoPipeline = new DemoPipeline(getClass.getResource("/iris.csv").getPath)
   val result: DataFrame = demoPipeline.run()
 
-  "iris dataframe" should "have 100 rows" in {
-    assert(result.count() == 100)
-  }
-
-  it should "pass deequ validation" in {
+  "iris dataframe" should "pass deequ validation" in {
     val verificationSuite = VerificationSuite().onData(result)
       .addCheck(Check(CheckLevel.Error, "simple iris tests")
           .hasSize(_ == 100)
