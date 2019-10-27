@@ -7,7 +7,7 @@ Features (WIP)
 --------
 - [x] testing with deequ
   - [x] deequ in integration tests
-  - [x] deequ as a pipeline runtime validation mixin
+  - [x] deequ for doing runtime data validation
 - [x] Snapshot based dataframe testing
 - [ ] Transformers for AWS Athena - query intermediate tables in Athena
 - [ ] Pipeline S3 checkpoints save state to s3 and, in the event of failure, re-run the pipeline from the last checkpoint
