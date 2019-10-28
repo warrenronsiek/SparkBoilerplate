@@ -1,11 +1,14 @@
-import org.apache.spark.sql.{DataFrame, SparkSession}
 import pipelines.{DemoPipeline, GenericPipeline}
+import cli.CLIArgParse
+
 
 object PipelineExecutor extends App {
 
-  val pipeline: GenericPipeline = args(0) match {
+  val conf = new CLIArgParse(args)
+
+  val pipeline: GenericPipeline = conf.pipelineName() match {
     case "DemoPipeline" =>
-      DemoPipeline(args(1))
+      DemoPipeline(conf.filePath())
     case _ => throw new IllegalArgumentException("Provided pipeline name does not match an existing pipeline.")
   }
 

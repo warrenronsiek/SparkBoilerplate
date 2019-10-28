@@ -17,7 +17,7 @@ trait SparkContextMixin extends BeforeAndAfterAll with BeforeAndAfterEach with S
   }
 
   override def afterAll(): Unit = {
-    // do not stop the sparksession here - it will under certain circumsances cause the deequ tests to fail
+    // do not stop the sparksession here - it will under certain circumstances cause the deequ tests to fail
     super.afterAll()
   }
 }
