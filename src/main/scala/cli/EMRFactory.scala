@@ -4,11 +4,13 @@ import com.amazonaws.AmazonClientException
 import com.amazonaws.auth.{AWSCredentials, AWSStaticCredentialsProvider}
 import com.amazonaws.auth.profile.ProfileCredentialsProvider
 import com.amazonaws.regions.Regions
-import com.amazonaws.services.elasticmapreduce.model.{Application, JobFlowInstancesConfig, RunJobFlowRequest, RunJobFlowResult, StepConfig}
+import com.amazonaws.services.elasticmapreduce.model.{Application, Configuration, JobFlowInstancesConfig, RunJobFlowRequest, RunJobFlowResult, StepConfig}
 import com.amazonaws.services.elasticmapreduce.util.StepFactory
 import com.amazonaws.services.elasticmapreduce.{AmazonElasticMapReduce, AmazonElasticMapReduceClientBuilder}
+import scala.collection.JavaConverters._
 
-class EMRFactory {
+
+class EMRFactory(emrParams: EMRParams) {
   val credentials_profile: AWSCredentials = try {
     new ProfileCredentialsProvider("default").getCredentials
   } catch {
@@ -35,21 +37,42 @@ class EMRFactory {
     new Application().withName("Zeppelin")
   )
 
+  val instancesConfig: JobFlowInstancesConfig = new JobFlowInstancesConfig()
+    .withEc2SubnetId(emrParams.subnet)
+    .withEc2KeyName(emrParams.key)
+    .withInstanceCount(emrParams.instanceCount)
+    .withKeepJobFlowAliveWhenNoSteps(true)
+    .withMasterInstanceType(emrParams.instanceType)
+    .withSlaveInstanceType(emrParams.instanceType)
+  val configuration: Configuration = new Configuration()
+    .withClassification("spark-defaults")
+    .withProperties(Map(
+      "spark.executor.memory" -> "1g",
+      "spark.executor.instances" -> "15",
+      "spark.executor.cores" -> "5",
+      "spark.default.parallelism" -> "16"
+    ).asJava)
+    .withClassification("capacity-scheduler")
+    .withProperties(Map(
+      "yarn.scheduler.capacity.resource-calculator" -> "org.apache.hadoop.yarn.util.resource.DominantResourceCalculator"
+    ).asJava)
+    .withClassification("yarn-site")
+    .withProperties(Map(
+      "yarn.nodemanager.resource.memory-mb" -> "64512",
+      "yarn.nodemanager.resource.cpu-vcores" -> "15"
+    ).asJava)
+
+
   val request: RunJobFlowRequest = new RunJobFlowRequest()
-    .withName("MyClusterCreatedFromJava")
-    .withReleaseLabel("emr-5.20.0") // specifies the EMR release version label, we recommend the latest release
+    .withName(emrParams.name)
+    .withReleaseLabel("emr-5.27.0")
     .withSteps(enabledebugging)
-    .withApplications(apps : _*)
-    .withLogUri("s3://path/to/my/emr/logs") // a URI in S3 for log files is required when debugging is enabled
-    .withServiceRole("EMR_DefaultRole") // replace the default with a custom IAM service role if one is used
-    .withJobFlowRole("EMR_EC2_DefaultRole") // replace the default with a custom EMR role for the EC2 instance profile if one is used
-    .withInstances(new JobFlowInstancesConfig()
-      .withEc2SubnetId("subnet-12ab34c56")
-      .withEc2KeyName("myEc2Key")
-      .withInstanceCount(3)
-      .withKeepJobFlowAliveWhenNoSteps(true)
-      .withMasterInstanceType("m4.large")
-      .withSlaveInstanceType("m4.large"));
+    .withApplications(apps: _*)
+    .withLogUri(emrParams.logUri)
+    .withServiceRole(emrParams.serviceRole)
+    .withJobFlowRole(emrParams.instanceRole)
+    .withConfigurations(configuration)
+    .withInstances(instancesConfig);
 
   val result: RunJobFlowResult = emr.runJobFlow(request);
   System.out.println("The cluster ID is " + result.toString);

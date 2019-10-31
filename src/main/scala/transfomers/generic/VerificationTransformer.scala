@@ -21,12 +21,9 @@ abstract class VerificationTransformer extends AllPurposeTransformer {
       logger.info("Verification Passed")
     } else {
       logger.error("Found errors:\n")
-      val resultsForAllConstraints = verificationResult.checkResults
+      verificationResult.checkResults
         .flatMap { case (_, checkResult) => checkResult.constraintResults }
-      resultsForAllConstraints
-        .filter {
-          _.status != ConstraintStatus.Success
-        }
+        .filter { _.status != ConstraintStatus.Success }
         .foreach { result => logger.error(s"${result.constraint}: ${result.message.get}") }
       throw new Error("Verification Failed")
     }
