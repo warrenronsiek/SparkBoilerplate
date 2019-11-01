@@ -5,9 +5,11 @@ import net.ceedubs.ficus.Ficus._
 import com.typesafe.config.{Config, ConfigFactory}
 import EC2Data.ec2types
 
-class EMRConfig(configPath: String) {
+class EMRConfigReader(configPath: String) {
 
-  val config: Config = ConfigFactory.load(configPath)
+  System.setProperty("config.file", configPath)
+  ConfigFactory.invalidateCaches()
+  val config: Config = ConfigFactory.load()
 
   private def validateSubnet(subnet: String): String = {
     """subnet-\S+""".r.findFirstIn(subnet.toString) match {

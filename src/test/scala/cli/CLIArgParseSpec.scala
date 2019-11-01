@@ -4,7 +4,7 @@ import cli.CLIArgParse
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Suite}
 
 
-class CLIArgParseSuite extends FlatSpec {
+class CLIArgParseSpec extends FlatSpec {
   val args = Array("submit-job", "-p", "test", "-c", "/test/resources/test_config.conf")
   val parser = new CLIArgParse(args)
 
