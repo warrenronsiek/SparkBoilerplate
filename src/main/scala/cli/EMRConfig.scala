@@ -10,15 +10,15 @@ class EMRConfig(configPath: String) {
   val config: Config = ConfigFactory.load(configPath)
 
   private def validateSubnet(subnet: String): String = {
-    """subnet-\S+""".r.findFirstIn(subnet) match {
-      case Some(String) => subnet
+    """subnet-\S+""".r.findFirstIn(subnet.toString) match {
+      case Some(subnet: String) => subnet
       case None => throw new InvalidArgument("Subnet string has incorrect format")
     }
   }
 
   private def validateLogUri(logUri: String): String = {
-    """s3://\S+""".r.findFirstIn(logUri) match {
-      case Some(String) => logUri
+    """s3://\S+""".r.findFirstIn(logUri.toString) match {
+      case Some(logUri: String) => logUri
       case None => throw new InvalidArgument("LogUri is incorrect")
     }
   }
