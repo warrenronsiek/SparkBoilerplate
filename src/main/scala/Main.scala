@@ -1,7 +1,6 @@
 import org.rogach.scallop.ScallopConfBase
 import cli.CLIArgParse
 import com.typesafe.config.ConfigFactory
-import net.ceedubs.ficus.Ficus._
 
 object Main extends App {
 

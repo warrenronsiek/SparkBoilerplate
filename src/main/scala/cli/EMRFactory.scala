@@ -37,6 +37,17 @@ class EMRFactory(emrParams: EMRParams) {
     new Application().withName("Zeppelin")
   )
 
+  val availableCoresPerNode: Int = EC2Data.ec2types(emrParams.instanceType).cores - 1
+  val totalAvailableCores: Int = availableCoresPerNode * emrParams.instanceCount // -1 for the node manager's 1 core
+  val coresPerExecutor: Int = List(3, 4, 5).reduce((a, b) => {
+    if (b % totalAvailableCores == 0) b
+    else if (a % totalAvailableCores < b % totalAvailableCores) a else b
+  })
+  val numExecutors: Int = Math.floor(totalAvailableCores / coresPerExecutor).toInt
+  val availableMemoryPerNode: Double = EC2Data.ec2types(emrParams.instanceType).memory - 1 // -1 because 1 gb reserved for node manager
+  val totalAvailableMemory: Double = availableMemoryPerNode * emrParams.instanceCount
+  val memPerExecutor: Double = Math.floor(totalAvailableMemory / numExecutors)
+
   val instancesConfig: JobFlowInstancesConfig = new JobFlowInstancesConfig()
     .withEc2SubnetId(emrParams.subnet)
     .withEc2KeyName(emrParams.key)
@@ -47,10 +58,10 @@ class EMRFactory(emrParams: EMRParams) {
   val configuration: Configuration = new Configuration()
     .withClassification("spark-defaults")
     .withProperties(Map(
-      "spark.executor.memory" -> "1g",
-      "spark.executor.instances" -> "15",
-      "spark.executor.cores" -> "5",
-      "spark.default.parallelism" -> "16"
+      "spark.executor.memory" -> s"${memPerExecutor}g",
+      "spark.executor.instances" -> s"$numExecutors",
+      "spark.executor.cores" -> s"$coresPerExecutor",
+      "spark.default.parallelism" -> s"$totalAvailableCores"
     ).asJava)
     .withClassification("capacity-scheduler")
     .withProperties(Map(
@@ -58,8 +69,8 @@ class EMRFactory(emrParams: EMRParams) {
     ).asJava)
     .withClassification("yarn-site")
     .withProperties(Map(
-      "yarn.nodemanager.resource.memory-mb" -> "64512",
-      "yarn.nodemanager.resource.cpu-vcores" -> "15"
+      "yarn.nodemanager.resource.memory-mb" -> s"$availableMemoryPerNode",
+      "yarn.nodemanager.resource.cpu-vcores" -> s"$availableCoresPerNode"
     ).asJava)
 
 
@@ -74,7 +85,6 @@ class EMRFactory(emrParams: EMRParams) {
     .withConfigurations(configuration)
     .withInstances(instancesConfig);
 
-  val result: RunJobFlowResult = emr.runJobFlow(request);
-  System.out.println("The cluster ID is " + result.toString);
+  def build: RunJobFlowResult = emr.runJobFlow(request)
 
 }
