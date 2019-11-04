@@ -45,6 +45,13 @@ resource "aws_iam_policy" "emr_policy" {
         "ec2:*"
       ],
       "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:*"
+      ],
+      "Resource": "*"
     }
   ]
 }
@@ -88,7 +95,8 @@ resource "aws_iam_policy" "emr_instance_policy" {
       ],
       "Resource": [
         "arn:aws:s3:::spark-boilerplate",
-        "arn:aws:s3:::spark-boilerplate/*"
+        "arn:aws:s3:::spark-boilerplate/*",
+        "arn:aws:s3:::elasticmapreduce/*"
       ]
     }
   ]
@@ -98,5 +106,10 @@ POLICY
 
 resource "aws_iam_role_policy_attachment" "emr_instance" {
   policy_arn = aws_iam_policy.emr_instance_policy.arn
+  role = aws_iam_role.emr_instance_role.name
+}
+
+resource "aws_iam_instance_profile" "emr_instance_profile" {
+  name = "emr-instance-profile"
   role = aws_iam_role.emr_instance_role.name
 }

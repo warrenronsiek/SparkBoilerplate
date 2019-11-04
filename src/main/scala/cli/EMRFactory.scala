@@ -8,6 +8,7 @@ import com.amazonaws.services.elasticmapreduce.model.{Application, Configuration
 import com.amazonaws.services.elasticmapreduce.util.StepFactory
 import com.amazonaws.services.elasticmapreduce.{AmazonElasticMapReduce, AmazonElasticMapReduceClientBuilder}
 import scala.collection.JavaConverters._
+import java.io._
 
 
 class EMRFactory(emrParams: EMRParams) {
@@ -37,8 +38,8 @@ class EMRFactory(emrParams: EMRParams) {
     new Application().withName("Zeppelin")
   )
 
-  val availableCoresPerNode: Int = EC2Data.ec2types(emrParams.instanceType).cores - 1
-  val totalAvailableCores: Int = availableCoresPerNode * emrParams.instanceCount // -1 for the node manager's 1 core
+  val availableCoresPerNode: Int = EC2Data.ec2types(emrParams.instanceType).cores - 1 // -1 for the node manager's 1 core
+  val totalAvailableCores: Int = availableCoresPerNode * emrParams.instanceCount
   val coresPerExecutor: Int = List(3, 4, 5).reduce((a, b) => {
     if (b % totalAvailableCores == 0) b
     else if (a % totalAvailableCores < b % totalAvailableCores) a else b

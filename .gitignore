@@ -3,3 +3,5 @@ target/
 project/target/
 project/project/
 /infra/.terraform/
+testsparkcli
+sparkcli

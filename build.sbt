@@ -13,5 +13,6 @@ libraryDependencies ++= Seq(
   "org.scalactic" %% "scalactic" % "3.0.8",
   "com.amazon.deequ" % "deequ" % "1.0.2",
   "org.scalatest" %% "scalatest" % "3.0.8" % "test",
-  "com.iheart" %% "ficus" % "1.4.7"
+  "com.iheart" %% "ficus" % "1.4.7",
+  "org.xerial" % "sqlite-jdbc" % "3.28.0"
 )
