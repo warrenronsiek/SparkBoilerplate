@@ -3,13 +3,13 @@ package cli
 import org.scalatest.{BeforeAndAfterAll, FlatSpec}
 
 
-class StateManagerSpec extends FlatSpec with BeforeAndAfterAll{
+class StateManagerSpec extends FlatSpec with BeforeAndAfterAll {
 
   val stateManager = StateManager("testsparkcli")
 
   "stateManager" should "add a cluster" in {
     stateManager.addCluster("test123", "testcluster")
-    val state =stateManager.getClusters()
+    val state = stateManager.getClusters()
     assert(state.head.clusterId == "test123" && state.head.clusterName == "testcluster")
   }
 

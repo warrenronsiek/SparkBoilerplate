@@ -19,5 +19,11 @@ class CLIArgParse(arguments: Seq[String]) extends ScallopConf(arguments) {
     val config: ScallopOption[String] = opt[String](required = true)
   }
   addSubcommand(createClusterWithJob)
+
+  val terminateCluster = new Subcommand("terminate-cluster") {
+    val clusterName: ScallopOption[String] = opt[String]()
+    val clusterId: ScallopOption[String] = opt[String]()
+  }
+  addSubcommand(terminateCluster)
   verify()
 }

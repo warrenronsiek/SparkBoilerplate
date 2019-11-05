@@ -4,14 +4,17 @@ import com.amazonaws.AmazonClientException
 import com.amazonaws.auth.{AWSCredentials, AWSStaticCredentialsProvider}
 import com.amazonaws.auth.profile.ProfileCredentialsProvider
 import com.amazonaws.regions.Regions
-import com.amazonaws.services.elasticmapreduce.model.{Application, Configuration, JobFlowInstancesConfig, RunJobFlowRequest, RunJobFlowResult, StepConfig}
+import com.amazonaws.services.elasticmapreduce.model.{Application, Configuration, JobFlowInstancesConfig, RunJobFlowRequest, RunJobFlowResult, StepConfig, TerminateJobFlowsRequest}
 import com.amazonaws.services.elasticmapreduce.util.StepFactory
 import com.amazonaws.services.elasticmapreduce.{AmazonElasticMapReduce, AmazonElasticMapReduceClientBuilder}
 import scala.collection.JavaConverters._
-import java.io._
 
 
-class EMRFactory(emrParams: EMRParams) {
+class EMRManager(emrParams: EMRParams) {
+
+  def this() = this(EMRParams("", "", "", "", "", "", 0, "")) //TODO: this is a hack to be able to use the credentials
+  // profile in the constructor to terminate clusters even if no params are passed. This should be refactored.
+
   val credentials_profile: AWSCredentials = try {
     new ProfileCredentialsProvider("default").getCredentials
   } catch {
@@ -87,5 +90,9 @@ class EMRFactory(emrParams: EMRParams) {
     .withInstances(instancesConfig);
 
   def build: RunJobFlowResult = emr.runJobFlow(request)
+
+  def terminate(clusterId: String) = {
+    emr.terminateJobFlows(new TerminateJobFlowsRequest(List(clusterId).asJava))
+  }
 
 }
