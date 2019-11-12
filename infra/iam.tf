@@ -42,16 +42,22 @@ resource "aws_iam_policy" "emr_policy" {
     {
       "Effect": "Allow",
       "Action": [
-        "ec2:*"
+        "ec2:*",
+        "cloudwatch:*",
+        "s3:*",
+        "application-autoscaling:*"
       ],
       "Resource": "*"
     },
     {
       "Effect": "Allow",
-      "Action": [
-        "s3:*"
-      ],
-      "Resource": "*"
+      "Action": "iam:CreateServiceLinkedRole",
+      "Resource": "arn:aws:iam::*:role/aws-service-role/spot.amazonaws.com/AWSServiceRoleForEC2Spot*",
+      "Condition": {
+          "StringLike": {
+              "iam:AWSServiceName": "spot.amazonaws.com"
+          }
+      }
     }
   ]
 }
@@ -98,6 +104,20 @@ resource "aws_iam_policy" "emr_instance_policy" {
         "arn:aws:s3:::spark-boilerplate/*",
         "arn:aws:s3:::elasticmapreduce/*"
       ]
+    }, {
+      "Effect": "Allow",
+      "Action": [
+        "cloudwatch:*",
+        "ec2:Describe*",
+        "elasticmapreduce:*"
+        "kinesis:*",
+        "rds:Describe*",
+        "sdb:*",
+        "sns:*",
+        "sqs:*",
+        "glue:*"
+      ],
+      "Resource": "*"
     }
   ]
 }
@@ -110,6 +130,6 @@ resource "aws_iam_role_policy_attachment" "emr_instance" {
 }
 
 resource "aws_iam_instance_profile" "emr_instance_profile" {
-  name = "emr-instance-profile"
+  name = "emr-default-instance-profile"
   role = aws_iam_role.emr_instance_role.name
 }

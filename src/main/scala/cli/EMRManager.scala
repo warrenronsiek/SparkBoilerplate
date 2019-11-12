@@ -4,9 +4,10 @@ import com.amazonaws.AmazonClientException
 import com.amazonaws.auth.{AWSCredentials, AWSStaticCredentialsProvider}
 import com.amazonaws.auth.profile.ProfileCredentialsProvider
 import com.amazonaws.regions.Regions
-import com.amazonaws.services.elasticmapreduce.model.{Application, Configuration, JobFlowInstancesConfig, RunJobFlowRequest, RunJobFlowResult, StepConfig, TerminateJobFlowsRequest}
+import com.amazonaws.services.elasticmapreduce.model.{Application, Configuration, JobFlowInstancesConfig, RunJobFlowRequest, RunJobFlowResult, StepConfig, TerminateJobFlowsRequest, TerminateJobFlowsResult}
 import com.amazonaws.services.elasticmapreduce.util.StepFactory
 import com.amazonaws.services.elasticmapreduce.{AmazonElasticMapReduce, AmazonElasticMapReduceClientBuilder}
+
 import scala.collection.JavaConverters._
 
 
@@ -29,7 +30,7 @@ class EMRManager(emrParams: EMRParams) {
     .withRegion(Regions.US_WEST_2)
     .build()
 
-  val stepFactory = new StepFactory();
+  val stepFactory = new StepFactory("elasticmapreduce");
   val enabledebugging: StepConfig = new StepConfig()
     .withName("Enable debugging")
     .withActionOnFailure("TERMINATE_JOB_FLOW")
@@ -91,7 +92,7 @@ class EMRManager(emrParams: EMRParams) {
 
   def build: RunJobFlowResult = emr.runJobFlow(request)
 
-  def terminate(clusterId: String) = {
+  def terminate(clusterId: String): TerminateJobFlowsResult = {
     emr.terminateJobFlows(new TerminateJobFlowsRequest(List(clusterId).asJava))
   }
 
