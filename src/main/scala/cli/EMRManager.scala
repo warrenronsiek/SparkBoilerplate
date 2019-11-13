@@ -4,7 +4,7 @@ import com.amazonaws.AmazonClientException
 import com.amazonaws.auth.{AWSCredentials, AWSStaticCredentialsProvider}
 import com.amazonaws.auth.profile.ProfileCredentialsProvider
 import com.amazonaws.regions.Regions
-import com.amazonaws.services.elasticmapreduce.model.{Application, Configuration, JobFlowInstancesConfig, RunJobFlowRequest, RunJobFlowResult, StepConfig, TerminateJobFlowsRequest, TerminateJobFlowsResult}
+import com.amazonaws.services.elasticmapreduce.model.{Application, Configuration, InstanceFleetConfig, InstanceFleetType, InstanceGroupConfig, InstanceRoleType, JobFlowInstancesConfig, RunJobFlowRequest, RunJobFlowResult, StepConfig, TerminateJobFlowsRequest, TerminateJobFlowsResult}
 import com.amazonaws.services.elasticmapreduce.util.StepFactory
 import com.amazonaws.services.elasticmapreduce.{AmazonElasticMapReduce, AmazonElasticMapReduceClientBuilder}
 
@@ -12,6 +12,7 @@ import scala.collection.JavaConverters._
 
 
 class EMRManager(emrParams: EMRParams) {
+  val stateManager = StateManager()
 
   def this() = this(EMRParams("", "", "", "", "", "", 0, "")) //TODO: this is a hack to be able to use the credentials
   // profile in the constructor to terminate clusters even if no params are passed. This should be refactored.
@@ -36,9 +37,9 @@ class EMRManager(emrParams: EMRParams) {
     .withActionOnFailure("TERMINATE_JOB_FLOW")
     .withHadoopJarStep(stepFactory.newEnableDebuggingStep())
   val apps = List(
+    new Application().withName("Hadoop"),
     new Application().withName("Hive"),
     new Application().withName("Spark"),
-    new Application().withName("Ganglia"),
     new Application().withName("Zeppelin")
   )
 
@@ -56,10 +57,26 @@ class EMRManager(emrParams: EMRParams) {
   val instancesConfig: JobFlowInstancesConfig = new JobFlowInstancesConfig()
     .withEc2SubnetId(emrParams.subnet)
     .withEc2KeyName(emrParams.key)
-    .withInstanceCount(emrParams.instanceCount)
     .withKeepJobFlowAliveWhenNoSteps(true)
-    .withMasterInstanceType(emrParams.instanceType)
-    .withSlaveInstanceType(emrParams.instanceType)
+
+    emrParams.bidPrice match {
+      case Some(price) =>
+        instancesConfig
+          .withInstanceGroups(
+            new InstanceGroupConfig("MASTER", emrParams.instanceType, 1)
+              .withMarket("SPOT")
+              .withBidPrice(price.toString),
+            new InstanceGroupConfig("CORE", emrParams.instanceType, emrParams.instanceCount - 1)
+              .withMarket("SPOT")
+              .withBidPrice(price.toString)
+          )
+      case None =>
+        instancesConfig
+          .withMasterInstanceType(emrParams.instanceType)
+          .withSlaveInstanceType(emrParams.instanceType)
+          .withInstanceCount(emrParams.instanceCount)
+    }
+
   val configuration: Configuration = new Configuration()
     .withClassification("spark-defaults")
     .withProperties(Map(
@@ -88,12 +105,18 @@ class EMRManager(emrParams: EMRParams) {
     .withServiceRole(emrParams.serviceRole)
     .withJobFlowRole(emrParams.instanceRole)
     .withConfigurations(configuration)
-    .withInstances(instancesConfig);
+    .withInstances(instancesConfig)
 
-  def build: RunJobFlowResult = emr.runJobFlow(request)
+  def build: RunJobFlowResult = {
+    val result = emr.runJobFlow(request)
+    stateManager.addCluster(result.getJobFlowId, emrParams.name)
+    result
+  }
 
   def terminate(clusterId: String): TerminateJobFlowsResult = {
-    emr.terminateJobFlows(new TerminateJobFlowsRequest(List(clusterId).asJava))
+    val result = emr.terminateJobFlows(new TerminateJobFlowsRequest(List(clusterId).asJava))
+    stateManager.removeCluster(emrParams.name)
+    result
   }
 
 }
