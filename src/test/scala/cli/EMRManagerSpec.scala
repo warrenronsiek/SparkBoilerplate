@@ -3,11 +3,13 @@ package cli
 import com.amazonaws.services.elasticmapreduce.waiters.AmazonElasticMapReduceWaiters
 import com.amazonaws.services.elasticmapreduce.model.{DescribeClusterRequest, DescribeClusterResult, RunJobFlowResult, TerminateJobFlowsRequest}
 import com.amazonaws.waiters.WaiterParameters
-import org.scalatest.{BeforeAndAfterAll, FlatSpec, Suite, Suites}
+import org.scalatest.{Args, BeforeAndAfterAll, BeforeAndAfterEach, FlatSpec, ParallelTestExecution, Status, Suite, Suites}
+
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
 
-class EMRManagerSpec extends FlatSpec with BeforeAndAfterAll {
+class EMRManagerSpec extends FlatSpec with BeforeAndAfterEach with ParallelTestExecution {
+
   val params = EMRParams(
     subnet = "subnet-b0711ec9",
     name = "test",
@@ -16,7 +18,7 @@ class EMRManagerSpec extends FlatSpec with BeforeAndAfterAll {
     instanceRole = "emr-default-instance-profile",
     key = "warren-laptop",
     instanceCount = 2,
-    instanceType = "m4.xlarge")
+    instanceType = "m5.xlarge")
 
   val spotParams = EMRParams(
     subnet = "subnet-b0711ec9",
@@ -26,13 +28,11 @@ class EMRManagerSpec extends FlatSpec with BeforeAndAfterAll {
     instanceRole = "emr-default-instance-profile",
     key = "warren-laptop",
     instanceCount = 2,
-    instanceType = "m4.xlarge",
+    instanceType = "m5.xlarge",
     bidPrice = Some(.40)
   )
 
   case class ClusterBuild(factory: EMRManager, result: RunJobFlowResult)
-
-  var jobFlowIds: ListBuffer[String] = ListBuffer()
 
   def buildCluster(params: EMRParams): ClusterBuild = {
     val factory = new EMRManager(params)
@@ -44,30 +44,32 @@ class EMRManagerSpec extends FlatSpec with BeforeAndAfterAll {
     }
     catch {
       case ex: java.lang.IllegalMonitorStateException =>
+      // Caused by not joining waiter threads to the main thread correctly.
+      // Gets thrown even when waiter works as intended. Ignoring because dealing with it is too time consuming right now.
     }
-    jobFlowIds += result.getJobFlowId
     ClusterBuild(factory, result)
   }
 
-  "emr cluster" should "have state WAITING" in {
+  "emr cluster" should "have state in WAITING, RUNNING" in {
     val builder = buildCluster(params)
     val desc: DescribeClusterResult = builder.factory.emr.describeCluster(new DescribeClusterRequest()
       .withClusterId(builder.result.getJobFlowId))
-    assert(desc.getCluster.getStatus.getState == "WAITING")
+    try {
+      assert(Set("WAITING", "RUNNING").contains(desc.getCluster.getStatus.getState))
+    } finally {
+      builder.factory.emr.terminateJobFlows(new TerminateJobFlowsRequest(List(builder.result.getJobFlowId).asJava))
+    }
+
   }
 
-//  "emr spot cluster" should "have state RUNNING" in {
-//    val builder = buildCluster(spotParams)
-//    val desc: DescribeClusterResult = builder.factory.emr.describeCluster(new DescribeClusterRequest()
-//      .withClusterId(builder.result.getJobFlowId))
-//    assert(desc.getCluster.getStatus.getState == "RUNNING")
-//  }
-
-  override def afterAll(): Unit = {
-    super.afterAll()
-    val terminator = new EMRManager()
-    jobFlowIds foreach { x =>
-      terminator.terminate(x)
+  "emr spot cluster" should "have state in WAITING, RUNNING" in {
+    val builder = buildCluster(spotParams)
+    val desc: DescribeClusterResult = builder.factory.emr.describeCluster(new DescribeClusterRequest()
+      .withClusterId(builder.result.getJobFlowId))
+    try {
+      assert(Set("WAITING", "RUNNING").contains(desc.getCluster.getStatus.getState))
+    } finally {
+      builder.factory.emr.terminateJobFlows(new TerminateJobFlowsRequest(List(builder.result.getJobFlowId).asJava))
     }
   }
 }

@@ -85,25 +85,26 @@ class EMRManager(emrParams: EMRParams) {
       "spark.executor.cores" -> s"$coresPerExecutor",
       "spark.default.parallelism" -> s"$totalAvailableCores"
     ).asJava)
-    .withClassification("capacity-scheduler")
-    .withProperties(Map(
-      "yarn.scheduler.capacity.resource-calculator" -> "org.apache.hadoop.yarn.util.resource.DominantResourceCalculator"
-    ).asJava)
-    .withClassification("yarn-site")
-    .withProperties(Map(
-      "yarn.nodemanager.resource.memory-mb" -> s"$availableMemoryPerNode",
-      "yarn.nodemanager.resource.cpu-vcores" -> s"$availableCoresPerNode"
-    ).asJava)
+//    .withClassification("capacity-scheduler")
+//    .withProperties(Map(
+//      "yarn.scheduler.capacity.resource-calculator" -> "org.apache.hadoop.yarn.util.resource.DominantResourceCalculator"
+//    ).asJava)
+//    .withClassification("yarn-site")
+//    .withProperties(Map(
+//      "yarn.nodemanager.resource.memory-mb" -> s"$availableMemoryPerNode",
+//      "yarn.nodemanager.resource.cpu-vcores" -> s"$availableCoresPerNode"
+//    ).asJava)
 
 
   val request: RunJobFlowRequest = new RunJobFlowRequest()
     .withName(emrParams.name)
-    .withReleaseLabel("emr-5.27.0")
+    .withReleaseLabel("emr-5.28.0")
     .withSteps(enabledebugging)
     .withApplications(apps: _*)
     .withLogUri(emrParams.logUri)
-    .withServiceRole(emrParams.serviceRole)
-    .withJobFlowRole(emrParams.instanceRole)
+    .withServiceRole("EMR_DefaultRole")
+    .withJobFlowRole("EMR_EC2_DefaultRole")
+    .withAutoScalingRole("EMR_AutoScaling_DefaultRole")
     .withConfigurations(configuration)
     .withInstances(instancesConfig)
 

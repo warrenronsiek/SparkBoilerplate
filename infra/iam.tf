@@ -51,6 +51,13 @@ resource "aws_iam_policy" "emr_policy" {
     },
     {
       "Effect": "Allow",
+      "Action": [
+        "*"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
       "Action": "iam:CreateServiceLinkedRole",
       "Resource": "arn:aws:iam::*:role/aws-service-role/spot.amazonaws.com/AWSServiceRoleForEC2Spot*",
       "Condition": {
@@ -104,12 +111,20 @@ resource "aws_iam_policy" "emr_instance_policy" {
         "arn:aws:s3:::spark-boilerplate/*",
         "arn:aws:s3:::elasticmapreduce/*"
       ]
-    }, {
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "*"
+      ],
+      "Resource": "*"
+    },
+    {
       "Effect": "Allow",
       "Action": [
         "cloudwatch:*",
         "ec2:Describe*",
-        "elasticmapreduce:*"
+        "elasticmapreduce:*",
         "kinesis:*",
         "rds:Describe*",
         "sdb:*",

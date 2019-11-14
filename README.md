@@ -26,3 +26,10 @@ Instead of painstakingly writing out the passing criteria for a test on a datafr
 a copy of the dataframe and then compare all future test rus against the copy. Writing tests like this
 is much less of a chore and encourages high test converge. This is particularly true for unit tests where 
 using Deequ doesn't make much sense. 
+
+CLI Tool (IN PROGRESS)
+--------
+The compiled jar can be called (with various arguments) to create EMR clusters and submit jobs that are part of the
+project to the cluster. This is extremely good for multiple teams where each person can spin up their own clusters to
+run/test their jobs with whatever modifications they have made. Its also helpful for launching clusters from other 
+environments. E.g. as part of integration or pipeline tests.
