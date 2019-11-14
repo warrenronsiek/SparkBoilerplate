@@ -20,6 +20,4 @@ class CLIArgParseSpec extends FlatSpec {
     assert(parser.sparkSubmit.config() == "/test/resources/test_config.conf")
   }
 
-
-
 }

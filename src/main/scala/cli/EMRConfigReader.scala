@@ -41,6 +41,7 @@ class EMRConfigReader(configPath: String) {
     config.as[String]("instanceRole"),
     config.as[String]("key"),
     config.as[Int]("instanceCount"),
-    validateInstanceType(config.as[String]("instanceType"))
+    validateInstanceType(config.as[String]("instanceType")),
+    config.as[Option[Double]]("bidPrice")
   )
 }

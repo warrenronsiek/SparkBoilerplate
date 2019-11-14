@@ -4,10 +4,12 @@ import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Suite}
 import com.amazon.deequ.VerificationSuite
 import com.amazon.deequ.checks.{Check, CheckLevel, CheckStatus}
+import com.typesafe.config.{Config, ConfigFactory}
 import utils.{SnapshotTest, SparkContextMixin}
+import net.ceedubs.ficus.Ficus._
 
 class DemoPipelineSpec extends FlatSpec with SnapshotTest {
-  val demoPipeline = new DemoPipeline(getClass.getResource("/iris.csv").getPath)
+  val demoPipeline = new DemoPipeline("demopipelinetest.conf")
   val result: DataFrame = demoPipeline.run()
 
   "iris datafraome" should "match snapshot" in {

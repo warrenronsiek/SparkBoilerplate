@@ -4,13 +4,15 @@ SparkBoilerplate
 Simple spark project template to be used/referenced in future development.
 
 Features (WIP)
---------
+--------------
 - [x] runtime/integration testing with deequ
 - [x] snapshot based unit testing
 - [ ] command line interface for launching jobs and creating clusters
 - [ ] transformers for AWS Athena - query intermediate tables in Athena
 - [ ] pipeline S3 checkpoints save state to s3 and, in the event of failure, re-run the pipeline from the last checkpoint
 - [ ] local docker container for profiling integration tests
+- [ ] airflow pipeline orchestration
+- [ ] CI/CD
 
 Testing with Deequ
 ------------------

@@ -1,12 +1,17 @@
 package cli
 
+import java.io.File
+
 import com.amazonaws.AmazonClientException
 import com.amazonaws.auth.{AWSCredentials, AWSStaticCredentialsProvider}
 import com.amazonaws.auth.profile.ProfileCredentialsProvider
 import com.amazonaws.regions.Regions
-import com.amazonaws.services.elasticmapreduce.model.{Application, Configuration, InstanceFleetConfig, InstanceFleetType, InstanceGroupConfig, InstanceRoleType, JobFlowInstancesConfig, RunJobFlowRequest, RunJobFlowResult, StepConfig, TerminateJobFlowsRequest, TerminateJobFlowsResult}
+import com.amazonaws.services.elasticmapreduce.model.{AddJobFlowStepsRequest, Application, Configuration, HadoopJarStepConfig, InstanceGroupConfig, JobFlowInstancesConfig, RunJobFlowRequest, RunJobFlowResult, StepConfig, TerminateJobFlowsRequest, TerminateJobFlowsResult}
 import com.amazonaws.services.elasticmapreduce.util.StepFactory
 import com.amazonaws.services.elasticmapreduce.{AmazonElasticMapReduce, AmazonElasticMapReduceClientBuilder}
+import com.amazonaws.services.s3.model.PutObjectResult
+import com.amazonaws.services.s3.{AmazonS3, AmazonS3ClientBuilder}
+import org.eclipse.jgit.lib.{ConfigConstants, RepositoryBuilder}
 
 import scala.collection.JavaConverters._
 
@@ -14,10 +19,9 @@ import scala.collection.JavaConverters._
 class EMRManager(emrParams: EMRParams) {
   val stateManager = StateManager()
 
-  def this() = this(EMRParams("", "", "", "", "", "", 0, "")) //TODO: this is a hack to be able to use the credentials
-  // profile in the constructor to terminate clusters even if no params are passed. This should be refactored.
+  def this() = this(EMRParams("", "", "", "", "", "", 0, "")) //TODO: this is a hack to be able to use the credentials profile in the constructor to terminate clusters even if no params are passed. This should be refactored.
 
-  val credentials_profile: AWSCredentials = try {
+  private val credentialsProfile: AWSCredentials = try {
     new ProfileCredentialsProvider("default").getCredentials
   } catch {
     case ex: Throwable =>
@@ -26,35 +30,40 @@ class EMRManager(emrParams: EMRParams) {
           |Make sure that the credentials file exists and that the profile name is defined within it.""".stripMargin,
         ex)
   }
+  private val credentialsProvider = new AWSStaticCredentialsProvider(credentialsProfile)
   val emr: AmazonElasticMapReduce = AmazonElasticMapReduceClientBuilder.standard()
-    .withCredentials(new AWSStaticCredentialsProvider(credentials_profile))
+    .withCredentials(credentialsProvider)
+    .withRegion(Regions.US_WEST_2)
+    .build()
+  private val s3: AmazonS3 = AmazonS3ClientBuilder.standard()
+    .withCredentials(credentialsProvider)
     .withRegion(Regions.US_WEST_2)
     .build()
 
-  val stepFactory = new StepFactory("elasticmapreduce");
-  val enabledebugging: StepConfig = new StepConfig()
+  private val stepFactory = new StepFactory("elasticmapreduce");
+  private val enabledebugging: StepConfig = new StepConfig()
     .withName("Enable debugging")
     .withActionOnFailure("TERMINATE_JOB_FLOW")
     .withHadoopJarStep(stepFactory.newEnableDebuggingStep())
-  val apps = List(
+  private val apps = List(
     new Application().withName("Hadoop"),
     new Application().withName("Hive"),
     new Application().withName("Spark"),
     new Application().withName("Zeppelin")
   )
 
-  val availableCoresPerNode: Int = EC2Data.ec2types(emrParams.instanceType).cores - 1 // -1 for the node manager's 1 core
-  val totalAvailableCores: Int = availableCoresPerNode * emrParams.instanceCount
-  val coresPerExecutor: Int = List(3, 4, 5).reduce((a, b) => {
+  private val availableCoresPerNode: Int = EC2Data.ec2types(emrParams.instanceType).cores - 1 // -1 for the node manager's 1 core
+  private val totalAvailableCores: Int = availableCoresPerNode * emrParams.instanceCount
+  private val coresPerExecutor: Int = List(3, 4, 5).reduce((a, b) => {
     if (b % totalAvailableCores == 0) b
     else if (a % totalAvailableCores < b % totalAvailableCores) a else b
   })
-  val numExecutors: Int = Math.floor(totalAvailableCores / coresPerExecutor).toInt
-  val availableMemoryPerNode: Double = EC2Data.ec2types(emrParams.instanceType).memory - 1 // -1 because 1 gb reserved for node manager
-  val totalAvailableMemory: Double = availableMemoryPerNode * emrParams.instanceCount
-  val memPerExecutor: Double = Math.floor(totalAvailableMemory / numExecutors)
+  private val numExecutors: Int = Math.floor(totalAvailableCores / coresPerExecutor).toInt
+  private val availableMemoryPerNode: Double = EC2Data.ec2types(emrParams.instanceType).memory - 1 // -1 because 1 gb reserved for node manager
+  private val totalAvailableMemory: Double = availableMemoryPerNode * emrParams.instanceCount
+  private val memPerExecutor: Double = Math.floor(totalAvailableMemory / numExecutors)
 
-  val instancesConfig: JobFlowInstancesConfig = new JobFlowInstancesConfig()
+  private val instancesConfig: JobFlowInstancesConfig = new JobFlowInstancesConfig()
     .withEc2SubnetId(emrParams.subnet)
     .withEc2KeyName(emrParams.key)
     .withKeepJobFlowAliveWhenNoSteps(true)
@@ -77,7 +86,7 @@ class EMRManager(emrParams: EMRParams) {
           .withInstanceCount(emrParams.instanceCount)
     }
 
-  val configuration: Configuration = new Configuration()
+  private val configuration: Configuration = new Configuration()
     .withClassification("spark-defaults")
     .withProperties(Map(
       "spark.executor.memory" -> s"${memPerExecutor}g",
@@ -96,15 +105,14 @@ class EMRManager(emrParams: EMRParams) {
 //    ).asJava)
 
 
-  val request: RunJobFlowRequest = new RunJobFlowRequest()
+  private val request: RunJobFlowRequest = new RunJobFlowRequest()
     .withName(emrParams.name)
     .withReleaseLabel("emr-5.28.0")
     .withSteps(enabledebugging)
     .withApplications(apps: _*)
     .withLogUri(emrParams.logUri)
-    .withServiceRole("EMR_DefaultRole")
-    .withJobFlowRole("EMR_EC2_DefaultRole")
-    .withAutoScalingRole("EMR_AutoScaling_DefaultRole")
+    .withServiceRole(emrParams.serviceRole)
+    .withJobFlowRole(emrParams.instanceRole)
     .withConfigurations(configuration)
     .withInstances(instancesConfig)
 
@@ -118,6 +126,25 @@ class EMRManager(emrParams: EMRParams) {
     val result = emr.terminateJobFlows(new TerminateJobFlowsRequest(List(clusterId).asJava))
     stateManager.removeCluster(emrParams.name)
     result
+  }
+
+  def terminate(): TerminateJobFlowsResult = {
+    val clusterIds = stateManager.getClusters().map(cluster => cluster.clusterId)
+    val result = emr.terminateJobFlows(new TerminateJobFlowsRequest(clusterIds.asJava))
+    val removals = stateManager.removeAll()
+    result
+  }
+
+  def submitJob(pipelineName: String) = {
+    val repo = new RepositoryBuilder().readEnvironment().findGitDir().build()
+    val branch: String = repo.getBranch
+    val user: String = repo.getConfig.getString(ConfigConstants.CONFIG_USER_SECTION,"user", "name")
+    val localJarPath = List(System.getProperty("user.dir"), "target", "scala-2.11", "sparkboilerplate_2.11-0.1.jar").mkString("/")
+    val remoteJarPath = List("jars", user, s"$branch.jar").mkString("/")
+    val putJar: PutObjectResult = s3.putObject("spark-boilerplate", remoteJarPath, new File(localJarPath))
+    emr.addJobFlowSteps(new AddJobFlowStepsRequest(stateManager.getClusters().head.clusterId)
+      .withSteps(new StepConfig(pipelineName, new HadoopJarStepConfig()
+        .withJar(remoteJarPath))))
   }
 
 }
