@@ -3,10 +3,8 @@ package cli
 import com.amazonaws.services.elasticmapreduce.waiters.AmazonElasticMapReduceWaiters
 import com.amazonaws.services.elasticmapreduce.model.{DescribeClusterRequest, DescribeClusterResult, RunJobFlowResult, TerminateJobFlowsRequest}
 import com.amazonaws.waiters.WaiterParameters
-import org.scalatest.{Args, BeforeAndAfterAll, BeforeAndAfterEach, FlatSpec, ParallelTestExecution, Status, Suite, Suites}
-
+import org.scalatest.{BeforeAndAfterEach, FlatSpec, ParallelTestExecution}
 import scala.collection.JavaConverters._
-import scala.collection.mutable.ListBuffer
 
 class EMRManagerSpec extends FlatSpec with BeforeAndAfterEach with ParallelTestExecution {
 

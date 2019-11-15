@@ -1,7 +1,6 @@
 package cli
 
 import java.io.File
-
 import com.amazonaws.AmazonClientException
 import com.amazonaws.auth.{AWSCredentials, AWSStaticCredentialsProvider}
 import com.amazonaws.auth.profile.ProfileCredentialsProvider
@@ -12,9 +11,7 @@ import com.amazonaws.services.elasticmapreduce.{AmazonElasticMapReduce, AmazonEl
 import com.amazonaws.services.s3.model.PutObjectResult
 import com.amazonaws.services.s3.{AmazonS3, AmazonS3ClientBuilder}
 import org.eclipse.jgit.lib.{ConfigConstants, RepositoryBuilder}
-
 import scala.collection.JavaConverters._
-
 
 class EMRManager(emrParams: EMRParams) {
   val stateManager = StateManager()
@@ -68,23 +65,23 @@ class EMRManager(emrParams: EMRParams) {
     .withEc2KeyName(emrParams.key)
     .withKeepJobFlowAliveWhenNoSteps(true)
 
-    emrParams.bidPrice match {
-      case Some(price) =>
-        instancesConfig
-          .withInstanceGroups(
-            new InstanceGroupConfig("MASTER", emrParams.instanceType, 1)
-              .withMarket("SPOT")
-              .withBidPrice(price.toString),
-            new InstanceGroupConfig("CORE", emrParams.instanceType, emrParams.instanceCount - 1)
-              .withMarket("SPOT")
-              .withBidPrice(price.toString)
-          )
-      case None =>
-        instancesConfig
-          .withMasterInstanceType(emrParams.instanceType)
-          .withSlaveInstanceType(emrParams.instanceType)
-          .withInstanceCount(emrParams.instanceCount)
-    }
+  emrParams.bidPrice match {
+    case Some(price) =>
+      instancesConfig
+        .withInstanceGroups(
+          new InstanceGroupConfig("MASTER", emrParams.instanceType, 1)
+            .withMarket("SPOT")
+            .withBidPrice(price.toString),
+          new InstanceGroupConfig("CORE", emrParams.instanceType, emrParams.instanceCount - 1)
+            .withMarket("SPOT")
+            .withBidPrice(price.toString)
+        )
+    case None =>
+      instancesConfig
+        .withMasterInstanceType(emrParams.instanceType)
+        .withSlaveInstanceType(emrParams.instanceType)
+        .withInstanceCount(emrParams.instanceCount)
+  }
 
   private val configuration: Configuration = new Configuration()
     .withClassification("spark-defaults")
@@ -94,15 +91,15 @@ class EMRManager(emrParams: EMRParams) {
       "spark.executor.cores" -> s"$coresPerExecutor",
       "spark.default.parallelism" -> s"$totalAvailableCores"
     ).asJava)
-//    .withClassification("capacity-scheduler")
-//    .withProperties(Map(
-//      "yarn.scheduler.capacity.resource-calculator" -> "org.apache.hadoop.yarn.util.resource.DominantResourceCalculator"
-//    ).asJava)
-//    .withClassification("yarn-site")
-//    .withProperties(Map(
-//      "yarn.nodemanager.resource.memory-mb" -> s"$availableMemoryPerNode",
-//      "yarn.nodemanager.resource.cpu-vcores" -> s"$availableCoresPerNode"
-//    ).asJava)
+  //    .withClassification("capacity-scheduler")
+  //    .withProperties(Map(
+  //      "yarn.scheduler.capacity.resource-calculator" -> "org.apache.hadoop.yarn.util.resource.DominantResourceCalculator"
+  //    ).asJava)
+  //    .withClassification("yarn-site")
+  //    .withProperties(Map(
+  //      "yarn.nodemanager.resource.memory-mb" -> s"$availableMemoryPerNode",
+  //      "yarn.nodemanager.resource.cpu-vcores" -> s"$availableCoresPerNode"
+  //    ).asJava)
 
 
   private val request: RunJobFlowRequest = new RunJobFlowRequest()
@@ -135,16 +132,18 @@ class EMRManager(emrParams: EMRParams) {
     result
   }
 
-  def submitJob(pipelineName: String) = {
+  def submitJob(pipelineName: String, configFileName: String) = {
     val repo = new RepositoryBuilder().readEnvironment().findGitDir().build()
     val branch: String = repo.getBranch
-    val user: String = repo.getConfig.getString(ConfigConstants.CONFIG_USER_SECTION,"user", "name")
+    val user: String = repo.getConfig.getString(ConfigConstants.CONFIG_USER_SECTION, "user", "name")
     val localJarPath = List(System.getProperty("user.dir"), "target", "scala-2.11", "sparkboilerplate_2.11-0.1.jar").mkString("/")
     val remoteJarPath = List("jars", user, s"$branch.jar").mkString("/")
     val putJar: PutObjectResult = s3.putObject("spark-boilerplate", remoteJarPath, new File(localJarPath))
     emr.addJobFlowSteps(new AddJobFlowStepsRequest(stateManager.getClusters().head.clusterId)
       .withSteps(new StepConfig(pipelineName, new HadoopJarStepConfig()
-        .withJar(remoteJarPath))))
+        .withJar(remoteJarPath)
+        .withMainClass("Main")
+        .withArgs("-c", configFileName))))
   }
 
 }

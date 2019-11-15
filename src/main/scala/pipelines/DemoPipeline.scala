@@ -1,11 +1,8 @@
 package pipelines
 
 import com.typesafe.config.{Config, ConfigFactory}
-import org.apache.spark
-import org.apache.spark.sql.{DataFrame, Dataset, SparkSession, types}
-import org.apache.spark.ml.{Pipeline, PipelineModel, PipelineStage, Transformer}
+import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.ml.param.Param
-import org.apache.spark.sql.types.{DataType, DoubleType, StringType, StructField, StructType}
 import schemas.Iris
 import transfomers.demopipeline.{DemoFilter1, DemoFilter1Validator}
 import net.ceedubs.ficus.Ficus._

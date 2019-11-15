@@ -1,6 +1,5 @@
 package cli
 
-import cli.CLIArgParse
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Suite}
 
 
