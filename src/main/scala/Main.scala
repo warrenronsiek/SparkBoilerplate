@@ -6,14 +6,14 @@ object Main extends App {
 
   val parser = new CLIArgParse(args)
   parser.subcommands match {
-    case commands: List[ScallopConfBase] if commands.contains(parser.sparkSubmit) =>
-      val pipeline: GenericPipeline = parser.sparkSubmit.pipelineName().toString match {
-        case "DemoPipeline" => new DemoPipeline(parser.sparkSubmit.config().toString)
+    case commands: List[ScallopConfBase] if commands.contains(parser.runPipeline) =>
+      val pipeline: GenericPipeline = parser.runPipeline.pipelineName().toString match {
+        case "DemoPipeline" => new DemoPipeline(parser.runPipeline.configName().toString)
       }
       pipeline.run()
 
     case commands: List[ScallopConfBase] if commands.contains(parser.createCluster) =>
-      val params: cli.EMRParams = new EMRConfigReader(parser.sparkSubmit.config()).getParams
+      val params: cli.EMRParams = new EMRConfigReader(parser.createCluster.configName()).getParams
       val emrManager = new EMRManager(params)
       emrManager.build
 
@@ -23,6 +23,10 @@ object Main extends App {
         case Some(clusterId) => emrManager.terminate(clusterId)
         case None => emrManager.terminate()
       }
+
+    case commands: List[ScallopConfBase] if commands.contains(parser.sparkSubmit) =>
+      val emrManager = new EMRManager()
+      emrManager.submitJob(parser.sparkSubmit.pipelineName.toString(), parser.sparkSubmit.configName.toString())
 
     case _ => throw new IllegalArgumentException("Could not match provided command")
   }

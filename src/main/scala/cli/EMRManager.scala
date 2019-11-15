@@ -143,7 +143,9 @@ class EMRManager(emrParams: EMRParams) {
       .withSteps(new StepConfig(pipelineName, new HadoopJarStepConfig()
         .withJar(remoteJarPath)
         .withMainClass("Main")
-        .withArgs("-c", configFileName))))
+        .withArgs("-run-pipeline")
+        .withArgs("-pipeline-name", pipelineName)
+        .withArgs("-config-name", configFileName))))
   }
 
 }

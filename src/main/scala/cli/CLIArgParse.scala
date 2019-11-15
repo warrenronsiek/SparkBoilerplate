@@ -6,12 +6,18 @@ class CLIArgParse(arguments: Seq[String]) extends ScallopConf(arguments) {
   // for some weird reason, adding type defs will make the main class not compile.
   val sparkSubmit = new Subcommand("submit-job") {
     val pipelineName: ScallopOption[String] = opt[String](required = true)
-    val config: ScallopOption[String] = opt[String](required = true)
+    val configName: ScallopOption[String] = opt[String](required = true)
   }
   addSubcommand(sparkSubmit)
 
+  val runPipeline = new Subcommand("run-pipeline") {
+    val pipelineName: ScallopOption[String] = opt[String](required = true)
+    val configName: ScallopOption[String] = opt[String](required = true)
+  }
+  addSubcommand(runPipeline)
+
   val createCluster = new Subcommand("create-cluster") {
-    val config: ScallopOption[String] = opt[String](required = true)
+    val configName: ScallopOption[String] = opt[String](required = true)
   }
   addSubcommand(createCluster)
 
