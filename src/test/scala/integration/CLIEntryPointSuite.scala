@@ -50,7 +50,9 @@ class CLIEntryPointSuite extends FlatSpec with BeforeAndAfterAll {
   override def afterAll(): Unit = {
     super.afterAll()
     val ids = state.getClusters() map (cr => cr.clusterId)
-    emrManager.emr.terminateJobFlows(new TerminateJobFlowsRequest(ids.asJava))
+    if (ids.nonEmpty) {
+      emrManager.emr.terminateJobFlows(new TerminateJobFlowsRequest(ids.asJava))
+    }
+    state.removeAll()
   }
-
 }

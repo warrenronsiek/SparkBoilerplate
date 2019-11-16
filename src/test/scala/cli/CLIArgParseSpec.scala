@@ -6,7 +6,7 @@ import org.scalatest.{BeforeAndAfterAll, FlatSpec, Suite}
 class CLIArgParseSpec extends FlatSpec {
 
   "cli argparse" should "parse subcommand submit-job" in {
-    val args = Array("submit-job", "-p", "test", "-c", "test_config.conf")
+    val args = Array("spark-submit", "-p", "test", "-c", "test_config.conf")
     val parser = new CLIArgParse(args)
     assert(parser.subcommands.contains(parser.sparkSubmit))
     assert(parser.sparkSubmit.pipelineName() == "test")

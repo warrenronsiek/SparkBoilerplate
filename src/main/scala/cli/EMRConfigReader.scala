@@ -1,6 +1,5 @@
 package cli
 
-import com.sun.tools.corba.se.idl.InvalidArgument
 import net.ceedubs.ficus.Ficus._
 import com.typesafe.config.{Config, ConfigFactory}
 import EC2Data.ec2types
@@ -14,14 +13,14 @@ class EMRConfigReader(configName: String) {
   private def validateSubnet(subnet: String): String = {
     """subnet-\S+""".r.findFirstIn(subnet.toString) match {
       case Some(subnet: String) => subnet
-      case None => throw new InvalidArgument("Subnet string has incorrect format")
+      case None => throw new Error("Subnet string has incorrect format")
     }
   }
 
   private def validateLogUri(logUri: String): String = {
     """s3://\S+""".r.findFirstIn(logUri.toString) match {
       case Some(logUri: String) => logUri
-      case None => throw new InvalidArgument("LogUri is incorrect")
+      case None => throw new Error("LogUri is incorrect")
     }
   }
 
@@ -29,7 +28,7 @@ class EMRConfigReader(configName: String) {
     if (ec2types.keys.toIterator.contains(instanceType)) {
       instanceType
     } else {
-      throw new InvalidArgument("Invalid instance type")
+      throw new Error("Invalid instance type")
     }
   }
 

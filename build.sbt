@@ -17,3 +17,10 @@ libraryDependencies ++= Seq(
   "org.xerial" % "sqlite-jdbc" % "3.28.0",
   "org.eclipse.jgit" % "org.eclipse.jgit" % "5.5.1.201910021850-r"
 )
+
+test in assembly := {}
+
+assemblyMergeStrategy in assembly := {
+  case PathList("META-INF", xs @ _*) => MergeStrategy.discard
+  case x => MergeStrategy.first
+}
