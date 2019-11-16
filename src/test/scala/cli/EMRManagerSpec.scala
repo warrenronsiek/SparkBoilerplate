@@ -33,8 +33,8 @@ class EMRManagerSpec extends FlatSpec with BeforeAndAfterEach with ParallelTestE
   case class ClusterBuild(factory: EMRManager, result: RunJobFlowResult)
 
   def buildCluster(params: EMRParams): ClusterBuild = {
-    val factory = new EMRManager(params)
-    val result: RunJobFlowResult = factory.build
+    val factory = new EMRManager()
+    val result: RunJobFlowResult = factory.build(params)
     try {
       val waiter: Unit = new AmazonElasticMapReduceWaiters(factory.emr)
         .clusterRunning()

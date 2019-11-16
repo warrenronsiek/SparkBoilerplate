@@ -16,8 +16,8 @@ object CLIEntryPoint extends App {
 
     case commands: List[ScallopConfBase] if commands.contains(parser.createCluster) =>
       val params: cli.EMRParams = new EMRConfigReader(parser.createCluster.configName()).getParams
-      val emrManager = new EMRManager(params)
-      emrManager.build
+      val emrManager = new EMRManager()
+      emrManager.build(params)
 
     case commands: List[ScallopConfBase] if commands.contains(parser.terminateCluster) =>
       val emrManager = new EMRManager()

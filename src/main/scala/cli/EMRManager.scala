@@ -1,6 +1,7 @@
 package cli
 
 import java.io.File
+
 import com.amazonaws.AmazonClientException
 import com.amazonaws.auth.{AWSCredentials, AWSStaticCredentialsProvider}
 import com.amazonaws.auth.profile.ProfileCredentialsProvider
@@ -8,15 +9,12 @@ import com.amazonaws.regions.Regions
 import com.amazonaws.services.elasticmapreduce.model.{AddJobFlowStepsRequest, AddJobFlowStepsResult, Application, Configuration, HadoopJarStepConfig, InstanceGroupConfig, JobFlowInstancesConfig, RunJobFlowRequest, RunJobFlowResult, StepConfig, TerminateJobFlowsRequest, TerminateJobFlowsResult}
 import com.amazonaws.services.elasticmapreduce.util.StepFactory
 import com.amazonaws.services.elasticmapreduce.{AmazonElasticMapReduce, AmazonElasticMapReduceClientBuilder}
-import com.amazonaws.services.s3.model.PutObjectResult
 import com.amazonaws.services.s3.{AmazonS3, AmazonS3ClientBuilder}
 import org.eclipse.jgit.lib.{ConfigConstants, RepositoryBuilder}
 import scala.collection.JavaConverters._
 
-class EMRManager(emrParams: EMRParams) {
+class EMRManager {
   val stateManager = StateManager()
-
-  def this() = this(EMRParams("", "", "", "", "", "", 0, "")) //TODO: this is a hack to be able to use the credentials profile in the constructor to terminate clusters even if no params are passed. This should be refactored.
 
   private val credentialsProfile: AWSCredentials = try {
     new ProfileCredentialsProvider("default").getCredentials
@@ -47,7 +45,7 @@ class EMRManager(emrParams: EMRParams) {
   //      "yarn.nodemanager.resource.cpu-vcores" -> s"$availableCoresPerNode"
   //    ).asJava)
 
-  def build: RunJobFlowResult = {
+  def build(emrParams: EMRParams): RunJobFlowResult = {
     val stepFactory = new StepFactory("elasticmapreduce");
     val enabledebugging: StepConfig = new StepConfig()
       .withName("Enable debugging")
@@ -118,31 +116,35 @@ class EMRManager(emrParams: EMRParams) {
 
   def terminate(clusterId: String): TerminateJobFlowsResult = {
     val result = emr.terminateJobFlows(new TerminateJobFlowsRequest(List(clusterId).asJava))
-    stateManager.removeCluster(emrParams.name)
+    stateManager.removeClusterById(clusterId)
     result
   }
 
   def terminate(): TerminateJobFlowsResult = {
     val clusterIds = stateManager.getClusters().map(cluster => cluster.clusterId)
     val result = emr.terminateJobFlows(new TerminateJobFlowsRequest(clusterIds.asJava))
-    val removals = stateManager.removeAll()
+    stateManager.removeAll()
     result
   }
 
   def submitJob(pipelineName: String, configFileName: String): AddJobFlowStepsResult = {
     val repo = new RepositoryBuilder().readEnvironment().findGitDir().build()
     val branch: String = repo.getBranch
-    val user: String = repo.getConfig.getString(ConfigConstants.CONFIG_USER_SECTION, "user", "name")
+    val user: String = repo.getConfig.getString(ConfigConstants.CONFIG_USER_SECTION, null, "name")
     val localJarPath = List(System.getProperty("user.dir"), "target", "scala-2.11", "sparkboilerplate_2.11-0.1.jar").mkString("/")
     val remoteJarPath = List("jars", user, s"$branch.jar").mkString("/")
-    val putJar: PutObjectResult = s3.putObject("spark-boilerplate", remoteJarPath, new File(localJarPath))
-    emr.addJobFlowSteps(new AddJobFlowStepsRequest(stateManager.getClusters().head.clusterId)
+    s3.putObject("spark-boilerplate", remoteJarPath, new File(localJarPath))
+    val clusterId = stateManager.getClusters().head.clusterId
+    val jobFlowStep: AddJobFlowStepsResult = emr.addJobFlowSteps(new AddJobFlowStepsRequest(clusterId)
       .withSteps(new StepConfig(pipelineName, new HadoopJarStepConfig()
-        .withJar(remoteJarPath)
-        .withMainClass("Main")
+        .withJar("s3://spark-boilerplate/" + remoteJarPath)
+        .withMainClass("CLIEntryPoint")
         .withArgs("run-pipeline")
         .withArgs("-p", pipelineName)
-        .withArgs("-c", configFileName))))
+        .withArgs("-c", configFileName))
+        .withActionOnFailure("CONTINUE")))
+    stateManager.addJob(clusterId, jobFlowStep.getStepIds.asScala.head)
+    jobFlowStep
   }
 
 }
