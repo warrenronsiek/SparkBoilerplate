@@ -1,14 +1,16 @@
+package scala
+
 import org.rogach.scallop.ScallopConfBase
 import cli.{CLIArgParse, EMRConfigReader, EMRManager}
 import pipelines.{DemoPipeline, GenericPipeline}
 
-object Main extends App {
+object CLIEntryPoint extends App {
 
   val parser = new CLIArgParse(args)
   parser.subcommands match {
     case commands: List[ScallopConfBase] if commands.contains(parser.runPipeline) =>
-      val pipeline: GenericPipeline = parser.runPipeline.pipelineName().toString match {
-        case "DemoPipeline" => new DemoPipeline(parser.runPipeline.configName().toString)
+      val pipeline: GenericPipeline = parser.runPipeline.pipelineName() match {
+        case "DemoPipeline" => new DemoPipeline(parser.runPipeline.configName())
       }
       pipeline.run()
 
@@ -26,7 +28,7 @@ object Main extends App {
 
     case commands: List[ScallopConfBase] if commands.contains(parser.sparkSubmit) =>
       val emrManager = new EMRManager()
-      emrManager.submitJob(parser.sparkSubmit.pipelineName.toString(), parser.sparkSubmit.configName.toString())
+      emrManager.submitJob(parser.sparkSubmit.pipelineName(), parser.sparkSubmit.configName())
 
     case _ => throw new IllegalArgumentException("Could not match provided command")
   }

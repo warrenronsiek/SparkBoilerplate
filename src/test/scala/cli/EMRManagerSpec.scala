@@ -60,7 +60,7 @@ class EMRManagerSpec extends FlatSpec with BeforeAndAfterEach with ParallelTestE
 
   }
 
-  "emr spot cluster" should "have state in WAITING, RUNNING" in {
+  it should "have state in WAITING, RUNNING when using spot" in {
     val builder = buildCluster(spotParams)
     val desc: DescribeClusterResult = builder.factory.emr.describeCluster(new DescribeClusterRequest()
       .withClusterId(builder.result.getJobFlowId))

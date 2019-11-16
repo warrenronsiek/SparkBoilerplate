@@ -5,9 +5,9 @@ import net.ceedubs.ficus.Ficus._
 import com.typesafe.config.{Config, ConfigFactory}
 import EC2Data.ec2types
 
-class EMRConfigReader(configPath: String) {
+class EMRConfigReader(configName: String) {
 
-  System.setProperty("config.file", configPath)
+  System.setProperty("config.file", getClass.getResource("/" + configName).getPath)
   ConfigFactory.invalidateCaches()
   val config: Config = ConfigFactory.load()
 

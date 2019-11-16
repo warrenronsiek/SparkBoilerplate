@@ -4,8 +4,7 @@ import org.scalatest.FlatSpec
 
 
 class EMRConfigReaderSpec extends FlatSpec{
-  val emrParams: EMRParams = new EMRConfigReader(
-    List(System.getProperty("user.dir"), "src", "test", "resources", "test.conf").mkString("/")).getParams
+  val emrParams: EMRParams = new EMRConfigReader("test.conf").getParams
 
   "emr params" should "parse subnet" in {
     assert(emrParams.subnet == "subnet-b0711ec9")
