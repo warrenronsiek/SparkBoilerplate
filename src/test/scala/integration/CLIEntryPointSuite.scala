@@ -21,7 +21,8 @@ class CLIEntryPointSuite extends FlatSpec with BeforeAndAfterAll {
     try {
       new AmazonElasticMapReduceWaiters(emrManager.emr)
         .clusterRunning()
-        .run(new WaiterParameters(new DescribeClusterRequest().withClusterId(clusterId))).wait(6000)
+        .run(new WaiterParameters(new DescribeClusterRequest().withClusterId(clusterId)))
+        .wait(6000)
     } catch {
       case ex: java.lang.IllegalMonitorStateException =>
       // Caused by not joining waiter threads to the main thread correctly.
@@ -33,7 +34,7 @@ class CLIEntryPointSuite extends FlatSpec with BeforeAndAfterAll {
 
   it should "submit jobs" in {
     val clusterId = state.getClusters().head.clusterId
-    CLIEntryPoint.main(Array("spark-submit", "-p", "DemoPipeline", "-c", "demopipeline.conf"))
+    CLIEntryPoint.main(Array("spark-submit-local", "-p", "DemoPipeline", "-c", "demopipeline.conf"))
     val jobId = state.getJobs(clusterId).head.jobId
     val desc: DescribeStepResult =
       emrManager.emr.describeStep(new DescribeStepRequest().withClusterId(clusterId).withStepId(jobId))

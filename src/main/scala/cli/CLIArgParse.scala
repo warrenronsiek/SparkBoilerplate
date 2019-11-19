@@ -4,11 +4,11 @@ import org.rogach.scallop.{ScallopConf, ScallopOption, Subcommand}
 
 class CLIArgParse(arguments: Seq[String]) extends ScallopConf(arguments) {
   // for some weird reason, adding type defs will make the main class not compile. Dont do it!
-  val sparkSubmit = new Subcommand("spark-submit") {
+  val sparkSubmitLocal = new Subcommand("spark-submit-local") {
     val pipelineName: ScallopOption[String] = opt[String](required = true)
     val configName: ScallopOption[String] = opt[String](required = true)
   }
-  addSubcommand(sparkSubmit)
+  addSubcommand(sparkSubmitLocal)
 
   val runPipeline = new Subcommand("run-pipeline") {
     val pipelineName: ScallopOption[String] = opt[String](required = true)

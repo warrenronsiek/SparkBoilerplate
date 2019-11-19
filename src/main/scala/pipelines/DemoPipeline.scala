@@ -6,11 +6,11 @@ import org.apache.spark.ml.param.Param
 import schemas.Iris
 import transfomers.demopipeline.{DemoFilter1, DemoFilter1Validator}
 import net.ceedubs.ficus.Ficus._
+import utils.ResourceReader
 
 class DemoPipeline(configName: String)(implicit spark: SparkSession = SparkSession.builder.getOrCreate()) extends GenericPipeline {
-  System.setProperty("config.file", getClass.getResource("/" + configName).getPath)
-  ConfigFactory.invalidateCaches()
-  val config: Config = ConfigFactory.load()
+  val resourceReader = new ResourceReader(configName)
+  val config: Config = resourceReader.config
   val irisFilePath: String = config.as[String]("filePath") match {
     case s: String if s.startsWith("s3://") => s
     case s: String => getClass.getResource(s).getPath

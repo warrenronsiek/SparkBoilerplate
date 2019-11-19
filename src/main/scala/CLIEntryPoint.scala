@@ -26,9 +26,9 @@ object CLIEntryPoint extends App {
         case None => emrManager.terminate()
       }
 
-    case commands: List[ScallopConfBase] if commands.contains(parser.sparkSubmit) =>
+    case commands: List[ScallopConfBase] if commands.contains(parser.sparkSubmitLocal) =>
       val emrManager = new EMRManager()
-      emrManager.submitJob(parser.sparkSubmit.pipelineName(), parser.sparkSubmit.configName())
+      emrManager.submitLocalJob(parser.sparkSubmitLocal.pipelineName(), parser.sparkSubmitLocal.configName())
 
     case _ => throw new IllegalArgumentException("Could not match provided command")
   }

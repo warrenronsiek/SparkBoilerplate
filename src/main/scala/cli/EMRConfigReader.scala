@@ -3,12 +3,12 @@ package cli
 import net.ceedubs.ficus.Ficus._
 import com.typesafe.config.{Config, ConfigFactory}
 import EC2Data.ec2types
+import utils.ResourceReader
 
 class EMRConfigReader(configName: String) {
 
-  System.setProperty("config.file", getClass.getResource("/" + configName).getPath)
-  ConfigFactory.invalidateCaches()
-  val config: Config = ConfigFactory.load()
+  val resourceReader = new ResourceReader(configName)
+  val config: Config =  resourceReader.config
 
   private def validateSubnet(subnet: String): String = {
     """subnet-\S+""".r.findFirstIn(subnet.toString) match {

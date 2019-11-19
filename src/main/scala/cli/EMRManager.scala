@@ -127,11 +127,11 @@ class EMRManager {
     result
   }
 
-  def submitJob(pipelineName: String, configFileName: String): AddJobFlowStepsResult = {
+  def submitLocalJob(pipelineName: String, configFileName: String): AddJobFlowStepsResult = {
     val repo = new RepositoryBuilder().readEnvironment().findGitDir().build()
     val branch: String = repo.getBranch
     val user: String = repo.getConfig.getString(ConfigConstants.CONFIG_USER_SECTION, null, "name")
-    val localJarPath = List(System.getProperty("user.dir"), "target", "scala-2.11", "sparkboilerplate_2.11-0.1.jar").mkString("/")
+    val localJarPath = List(System.getProperty("user.dir"), "target", "scala-2.11", "SparkBoilerplate-assembly-0.1.jar").mkString("/")
     val remoteJarPath = List("jars", user, s"$branch.jar").mkString("/")
     s3.putObject("spark-boilerplate", remoteJarPath, new File(localJarPath))
     val clusterId = stateManager.getClusters().head.clusterId

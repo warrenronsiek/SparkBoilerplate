@@ -3,6 +3,9 @@ name := "SparkBoilerplate"
 version := "0.1"
 resolvers += Resolver.bintrayRepo("elderresearch", "OSS")
 scalaVersion := "2.11.12"
+organization := "com.warren-r"
+mainClass in (Compile, run) := Some("scala.CLIEntryPoint")
+mainClass in (Compile, packageBin) := Some("scala.CLIEntryPoint")
 
 libraryDependencies ++= Seq(
   "org.apache.spark" %% "spark-core" % "2.4.4",
