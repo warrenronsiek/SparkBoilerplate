@@ -5,15 +5,21 @@ import java.io.File
 import com.amazonaws.AmazonClientException
 import com.amazonaws.auth.{AWSCredentials, AWSStaticCredentialsProvider}
 import com.amazonaws.auth.profile.ProfileCredentialsProvider
+import com.amazonaws.event.{ProgressEvent, ProgressListener}
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.elasticmapreduce.model.{AddJobFlowStepsRequest, AddJobFlowStepsResult, Application, Configuration, HadoopJarStepConfig, InstanceGroupConfig, JobFlowInstancesConfig, RunJobFlowRequest, RunJobFlowResult, StepConfig, TerminateJobFlowsRequest, TerminateJobFlowsResult}
 import com.amazonaws.services.elasticmapreduce.util.StepFactory
 import com.amazonaws.services.elasticmapreduce.{AmazonElasticMapReduce, AmazonElasticMapReduceClientBuilder}
+import com.amazonaws.services.s3.model.{PutObjectRequest, PutObjectResult}
+import com.amazonaws.services.s3.transfer.{TransferManager, TransferManagerBuilder}
 import com.amazonaws.services.s3.{AmazonS3, AmazonS3ClientBuilder}
 import org.eclipse.jgit.lib.{ConfigConstants, RepositoryBuilder}
+import org.apache.log4j.Logger
+
 import scala.collection.JavaConverters._
 
 class EMRManager {
+  val logger: Logger = Logger.getLogger(this.getClass)
   val stateManager = StateManager()
 
   private val credentialsProfile: AWSCredentials = try {
@@ -34,6 +40,10 @@ class EMRManager {
     .withCredentials(credentialsProvider)
     .withRegion(Regions.US_WEST_2)
     .build()
+  private val transferManager: TransferManager = TransferManagerBuilder.standard()
+    .withS3Client(s3)
+    .build()
+  private val stepFactory = new StepFactory("elasticmapreduce")
 
   //    .withClassification("capacity-scheduler")
   //    .withProperties(Map(
@@ -46,11 +56,11 @@ class EMRManager {
   //    ).asJava)
 
   def build(emrParams: EMRParams): RunJobFlowResult = {
-    val stepFactory = new StepFactory("elasticmapreduce");
     val enabledebugging: StepConfig = new StepConfig()
       .withName("Enable debugging")
       .withActionOnFailure("TERMINATE_JOB_FLOW")
       .withHadoopJarStep(stepFactory.newEnableDebuggingStep())
+
     val apps = List(
       new Application().withName("Hadoop"),
       new Application().withName("Hive"),
@@ -133,16 +143,37 @@ class EMRManager {
     val user: String = repo.getConfig.getString(ConfigConstants.CONFIG_USER_SECTION, null, "name")
     val localJarPath = List(System.getProperty("user.dir"), "target", "scala-2.11", "SparkBoilerplate-assembly-0.1.jar").mkString("/")
     val remoteJarPath = List("jars", user, s"$branch.jar").mkString("/")
-    s3.putObject("spark-boilerplate", remoteJarPath, new File(localJarPath))
+    val putObjectRequest = new PutObjectRequest("spark-boilerplate", remoteJarPath, new File(localJarPath))
+    var transferredBytes: Long = 0
+    putObjectRequest.setGeneralProgressListener(new ProgressListener {
+      override def progressChanged(progressEvent: ProgressEvent): Unit = {
+        transferredBytes += progressEvent.getBytesTransferred
+        logger.info(s"Transferred MB: ${transferredBytes / 1000000}")
+      }
+    })
+    val upload = transferManager.upload(putObjectRequest)
+    upload.waitForCompletion()
+    logger.info("Completed jar upload")
+
     val clusterId = stateManager.getClusters().head.clusterId
-    val jobFlowStep: AddJobFlowStepsResult = emr.addJobFlowSteps(new AddJobFlowStepsRequest(clusterId)
-      .withSteps(new StepConfig(pipelineName, new HadoopJarStepConfig()
-        .withJar("s3://spark-boilerplate/" + remoteJarPath)
-        .withMainClass("CLIEntryPoint")
-        .withArgs("run-pipeline")
-        .withArgs("-p", pipelineName)
-        .withArgs("-c", configFileName))
-        .withActionOnFailure("CONTINUE")))
+    val copyJars: StepConfig = new StepConfig()
+      .withName("Copy execution jar")
+      .withActionOnFailure("TERMINATE_JOB_FLOW")
+      .withHadoopJarStep(stepFactory
+        .newScriptRunnerStep("s3://spark-boilerplate/scripts/copy_jars.sh")
+        .withArgs("s3://spark-boilerplate/" + remoteJarPath))
+    emr.addJobFlowSteps(new AddJobFlowStepsRequest(clusterId).withSteps(copyJars))
+    val jobFlowStep: AddJobFlowStepsResult = emr.addJobFlowSteps(
+      new AddJobFlowStepsRequest(clusterId)
+        .withSteps(new StepConfig(pipelineName, new HadoopJarStepConfig()
+          .withJar("command-runner.jar")
+          .withArgs("spark-submit")
+          //        .withArgs("--properties-file", "spark-defaults.conf")
+          .withArgs("~/execution_jar.jar")
+          .withArgs("run-pipeline")
+          .withArgs("-p", pipelineName)
+          .withArgs("-c", configFileName))
+          .withActionOnFailure("CONTINUE")))
     stateManager.addJob(clusterId, jobFlowStep.getStepIds.asScala.head)
     jobFlowStep
   }

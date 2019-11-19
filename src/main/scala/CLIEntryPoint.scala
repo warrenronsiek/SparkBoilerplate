@@ -5,7 +5,6 @@ import cli.{CLIArgParse, EMRConfigReader, EMRManager}
 import pipelines.{DemoPipeline, GenericPipeline}
 
 object CLIEntryPoint extends App {
-
   val parser = new CLIArgParse(args)
   parser.subcommands match {
     case commands: List[ScallopConfBase] if commands.contains(parser.runPipeline) =>

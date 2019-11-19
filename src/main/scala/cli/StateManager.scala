@@ -59,7 +59,7 @@ class StateManager(implicit stateName: String = "sparkcli") {
   }
 
   def getClusters(): List[ClusterRecord] = {
-    val clusters: ResultSet = statement.executeQuery(s"select * from sparkclusters")
+    val clusters: ResultSet = statement.executeQuery(s"select * from sparkclusters order by create_time desc")
     var clusterList: ListBuffer[ClusterRecord] = ListBuffer()
     while (clusters.next()) {
       clusterList += ClusterRecord(
