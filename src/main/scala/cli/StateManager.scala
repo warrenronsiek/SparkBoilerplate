@@ -11,6 +11,7 @@ import scala.collection.mutable.ListBuffer
 class StateManager(implicit stateName: String = "sparkcli") {
   case class ClusterRecord(clusterId: String, createTime: String, clusterName: String)
   case class JobRecord(clusterId: String, jobId: String)
+  Class.forName("org.sqlite.JDBC")
 
   val connection: Connection = DriverManager.getConnection(s"jdbc:sqlite:$stateName")
   val statement: Statement = connection.createStatement

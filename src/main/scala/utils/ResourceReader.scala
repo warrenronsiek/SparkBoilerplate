@@ -7,7 +7,12 @@ import java.util.jar.JarFile
 import scala.collection.JavaConverters._
 import com.typesafe.config.{Config, ConfigFactory}
 
-
+/** The point of this class is to read various configs from the resources directory. The reason it is necessary is that
+ * the standard .getResource method doesn't work after being compiled into a jar. Instead, you need to switch between
+ * .getResource and .getResourceAsStream depending on whether or not the class has been compiled.
+ *
+ * @param configName the name of the configuration file, including extension, not including directory name
+ */
 class ResourceReader(configName: String) {
 
   private val file = new File(getClass.getResource("/" + configName).getPath)
