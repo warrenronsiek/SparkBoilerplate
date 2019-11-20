@@ -1,7 +1,7 @@
 package cli
 
 import java.io.File
-
+import java.util.concurrent.Future
 import com.amazonaws.AmazonClientException
 import com.amazonaws.auth.{AWSCredentials, AWSStaticCredentialsProvider}
 import com.amazonaws.auth.profile.ProfileCredentialsProvider
@@ -9,7 +9,7 @@ import com.amazonaws.event.{ProgressEvent, ProgressListener}
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.elasticmapreduce.model.{AddJobFlowStepsRequest, AddJobFlowStepsResult, Application, Configuration, HadoopJarStepConfig, InstanceGroupConfig, JobFlowInstancesConfig, RunJobFlowRequest, RunJobFlowResult, StepConfig, TerminateJobFlowsRequest, TerminateJobFlowsResult}
 import com.amazonaws.services.elasticmapreduce.util.StepFactory
-import com.amazonaws.services.elasticmapreduce.{AmazonElasticMapReduce, AmazonElasticMapReduceClientBuilder}
+import com.amazonaws.services.elasticmapreduce.{AmazonElasticMapReduce, AmazonElasticMapReduceAsync, AmazonElasticMapReduceAsyncClientBuilder, AmazonElasticMapReduceClientBuilder}
 import com.amazonaws.services.s3.model.{PutObjectRequest, PutObjectResult}
 import com.amazonaws.services.s3.transfer.{TransferManager, TransferManagerBuilder}
 import com.amazonaws.services.s3.{AmazonS3, AmazonS3ClientBuilder}
@@ -36,6 +36,10 @@ class EMRManager {
     .withCredentials(credentialsProvider)
     .withRegion(Regions.US_WEST_2)
     .build()
+  val emrAsync: AmazonElasticMapReduceAsync =  AmazonElasticMapReduceAsyncClientBuilder.standard()
+    .withCredentials(credentialsProvider)
+    .withRegion(Regions.US_WEST_2)
+    .build()
   private val s3: AmazonS3 = AmazonS3ClientBuilder.standard()
     .withCredentials(credentialsProvider)
     .withRegion(Regions.US_WEST_2)
@@ -45,15 +49,7 @@ class EMRManager {
     .build()
   private val stepFactory = new StepFactory("elasticmapreduce")
 
-  //    .withClassification("capacity-scheduler")
-  //    .withProperties(Map(
-  //      "yarn.scheduler.capacity.resource-calculator" -> "org.apache.hadoop.yarn.util.resource.DominantResourceCalculator"
-  //    ).asJava)
-  //    .withClassification("yarn-site")
-  //    .withProperties(Map(
-  //      "yarn.nodemanager.resource.memory-mb" -> s"$availableMemoryPerNode",
-  //      "yarn.nodemanager.resource.cpu-vcores" -> s"$availableCoresPerNode"
-  //    ).asJava)
+
 
   def build(emrParams: EMRParams): RunJobFlowResult = {
     val enabledebugging: StepConfig = new StepConfig()
@@ -103,11 +99,26 @@ class EMRManager {
     val configuration: Configuration = new Configuration()
       .withClassification("spark-defaults")
       .withProperties(Map(
-        "spark.executor.memory" -> s"${memPerExecutor}g",
-        "spark.executor.instances" -> s"$numExecutors",
-        "spark.executor.cores" -> s"$coresPerExecutor",
-        "spark.default.parallelism" -> s"$totalAvailableCores"
+//        "spark.executor.memory" -> s"${memPerExecutor}g",
+//        "spark.executor.instances" -> s"$numExecutors",
+//        "spark.executor.cores" -> s"$coresPerExecutor",
+        "spark.default.parallelism" -> s"$totalAvailableCores",
+        "spark.dynamicAllocation.enabled" -> "true",
+        "spark.executor.instances" -> "0"
       ).asJava)
+      .withClassification("capacity-scheduler")
+      .withProperties(Map(
+        "yarn.scheduler.capacity.resource-calculator" -> "org.apache.hadoop.yarn.util.resource.DominantResourceCalculator"
+      ).asJava)
+      .withClassification("spark")
+      .withProperties(Map(
+        "maximizeResourceAllocation" -> "true"
+      ).asJava)
+//      .withClassification("yarn-site")
+//      .withProperties(Map(
+//        "yarn.nodemanager.resource.memory-mb" -> s"$availableMemoryPerNode",
+//        "yarn.nodemanager.resource.cpu-vcores" -> s"$availableCoresPerNode"
+//      ).asJava)
     val request: RunJobFlowRequest = new RunJobFlowRequest()
       .withName(emrParams.name)
       .withReleaseLabel("emr-5.28.0")
@@ -137,7 +148,7 @@ class EMRManager {
     result
   }
 
-  def submitLocalJob(pipelineName: String, configFileName: String): AddJobFlowStepsResult = {
+  def submitLocalJob(pipelineName: String, configFileName: String): Unit = {
     val repo = new RepositoryBuilder().readEnvironment().findGitDir().build()
     val branch: String = repo.getBranch
     val user: String = repo.getConfig.getString(ConfigConstants.CONFIG_USER_SECTION, null, "name")
@@ -161,21 +172,23 @@ class EMRManager {
       .withActionOnFailure("TERMINATE_JOB_FLOW")
       .withHadoopJarStep(stepFactory
         .newScriptRunnerStep("s3://spark-boilerplate/scripts/copy_jars.sh")
-        .withArgs("s3://spark-boilerplate/" + remoteJarPath))
+        .withArgs("s3://spark-boilerplate/" + remoteJarPath, "/home/hadoop/" + remoteJarPath.split("/").last))
+    logger.info("Submitted copy jar step")
     emr.addJobFlowSteps(new AddJobFlowStepsRequest(clusterId).withSteps(copyJars))
-    val jobFlowStep: AddJobFlowStepsResult = emr.addJobFlowSteps(
+    val jobFlowStep = emr.addJobFlowSteps(
       new AddJobFlowStepsRequest(clusterId)
         .withSteps(new StepConfig(pipelineName, new HadoopJarStepConfig()
           .withJar("command-runner.jar")
           .withArgs("spark-submit")
+          .withArgs("--class", "CLIEntryPoint")
+          .withArgs("--deploy-mode", "cluster")
           //        .withArgs("--properties-file", "spark-defaults.conf")
-          .withArgs("~/execution_jar.jar")
+          .withArgs(s"../../../../../../home/hadoop/$branch.jar")
           .withArgs("run-pipeline")
           .withArgs("-p", pipelineName)
           .withArgs("-c", configFileName))
           .withActionOnFailure("CONTINUE")))
     stateManager.addJob(clusterId, jobFlowStep.getStepIds.asScala.head)
-    jobFlowStep
+    logger.info("Submitted job step")
   }
-
 }

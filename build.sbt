@@ -8,9 +8,9 @@ mainClass in (Compile, run) := Some("scala.CLIEntryPoint")
 mainClass in (Compile, packageBin) := Some("scala.CLIEntryPoint")
 
 libraryDependencies ++= Seq(
-  "org.apache.spark" %% "spark-core" % "2.4.4",
-  "org.apache.spark" %% "spark-sql" % "2.4.4",
-  "org.apache.spark" %% "spark-mllib" % "2.4.4",
+  "org.apache.spark" %% "spark-core" % "2.4.4" % "provided",
+  "org.apache.spark" %% "spark-sql" % "2.4.4" % "provided",
+  "org.apache.spark" %% "spark-mllib" % "2.4.4"  % "provided",
   "com.amazonaws" % "aws-java-sdk" % "1.11.659",  //the aws-java-sdk v2 has a netty dependency that conflicts with spark
   "org.rogach" %% "scallop" % "3.3.1",
   "org.scalactic" %% "scalactic" % "3.0.8",

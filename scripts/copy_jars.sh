@@ -1,1 +1,1 @@
-aws s3 cp "$1" ~/execution_jar.jar
+aws s3 cp "$1" "$2"

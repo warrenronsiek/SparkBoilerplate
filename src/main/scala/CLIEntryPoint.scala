@@ -31,4 +31,5 @@ object CLIEntryPoint extends App {
 
     case _ => throw new IllegalArgumentException("Could not match provided command")
   }
+  System.exit(0)
 }
