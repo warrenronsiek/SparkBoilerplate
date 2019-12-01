@@ -103,17 +103,17 @@ class EMRManager {
 //        "spark.executor.instances" -> s"$numExecutors",
 //        "spark.executor.cores" -> s"$coresPerExecutor",
         "spark.default.parallelism" -> s"$totalAvailableCores",
-        "spark.dynamicAllocation.enabled" -> "true",
-        "spark.executor.instances" -> "0"
+        "spark.dynamicAllocation.enabled" -> "true"
+//        "spark.executor.instances" -> "0"
       ).asJava)
       .withClassification("capacity-scheduler")
       .withProperties(Map(
         "yarn.scheduler.capacity.resource-calculator" -> "org.apache.hadoop.yarn.util.resource.DominantResourceCalculator"
       ).asJava)
       .withClassification("spark")
-      .withProperties(Map(
-        "maximizeResourceAllocation" -> "true"
-      ).asJava)
+      .withProperties(Map("maximizeResourceAllocation" -> "true").asJava)
+      .withClassification("yarn-site")
+      .withProperties(Map("log-aggregation-enable" -> "true").asJava)
 //      .withClassification("yarn-site")
 //      .withProperties(Map(
 //        "yarn.nodemanager.resource.memory-mb" -> s"$availableMemoryPerNode",
@@ -181,6 +181,7 @@ class EMRManager {
           .withJar("command-runner.jar")
           .withArgs("spark-submit")
           .withArgs("--class", "CLIEntryPoint")
+          .withArgs("--master", "yarn")
           .withArgs("--deploy-mode", "cluster")
           //        .withArgs("--properties-file", "spark-defaults.conf")
           .withArgs(s"../../../../../../home/hadoop/$branch.jar")
