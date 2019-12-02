@@ -61,6 +61,10 @@ val df = spark.read.schema(schema).csv("/Users/warrenronsiek/Projects/SparkBoile
   .withColumn("location_standard", locationStandardizer($"location_no_tail"))
   .drop("location_lower", "location_no_state", "location_no_punct", "location_no_tail", "location")
   .withColumnRenamed("location_standard", "location")
+  .withColumn("salary_only_digit", regexp_replace($"salary", "[^0-9]", ""))
+  .withColumn("salary_double", $"salary_only_digit".cast(DoubleType))
+  .drop("salary", "salary_only_digit")
+  .withColumnRenamed("salary_double", "salary")
 
 df
   //  .groupBy("location_no_tail", "location_standard").count.orderBy($"count".desc)
