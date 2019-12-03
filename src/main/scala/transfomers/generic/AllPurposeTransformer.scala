@@ -12,4 +12,5 @@ abstract class AllPurposeTransformer extends Transformer with Params {
   override def copy(extra: ParamMap): Transformer = defaultCopy(extra)
   val uid: String = Identifiable.randomUID(this.getClass.getName).toString
   val sqlContext: SQLContext = SparkSession.builder.getOrCreate().sqlContext
+  val spark: SparkSession = SparkSession.builder().getOrCreate()
 }

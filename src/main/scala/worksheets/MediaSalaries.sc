@@ -1,5 +1,6 @@
-import org.apache.spark.sql.{SQLContext, SparkSession}
-import org.apache.spark.sql.types.{DoubleType, StringType, StructField, StructType}
+import org.apache.spark.sql.expressions.{MutableAggregationBuffer, UserDefinedAggregateFunction}
+import org.apache.spark.sql.{DataFrame, Row, SQLContext, SparkSession}
+import org.apache.spark.sql.types.{DoubleType, IntegerType, LongType, StringType, StructField, StructType}
 import org.apache.spark.sql.functions._
 
 val schema = StructType(Array(
@@ -44,7 +45,32 @@ val locationStandardizer = udf((loc: String) => {
   }
 })
 
-val df = spark.read.schema(schema).csv("/Users/warrenronsiek/Projects/SparkBoilerplate/src/test/resources/real_media_salaries.csv")
+val ethnicityStandardizer = udf((genEth: String) => {
+  genEth match {
+    case r""".*white.*""" => "white"
+    case r""".*caucasian.*""" => "white"
+    case r""".*american.*""" => "white"
+    case r""".*euro.*""" => "white"
+
+    case r""".*hispanic.*""" => "hispanic"
+    case r""".*latin.*""" => "hispanic"
+    case r""".*mexican.*""" => "hispanic"
+
+    case r""".*asian.*""" => "asian"
+    case r""".*chinese.*""" => "asian"
+    case r""".*korean.*""" => "asian"
+    case r""".*viet.*""" => "asian"
+    case r""".*bengali.*""" => "asian"
+
+    case r""".*black.*""" => "black"
+    case r""".*african.*""" => "black"
+    case r""".*oc.*""" => "black"
+
+    case _ => "unknown/other"
+  }
+})
+
+val df: DataFrame = spark.read.schema(schema).csv("/Users/warrenronsiek/Projects/SparkBoilerplate/src/test/resources/real_media_salaries.csv")
   .drop("work_history", "duties")
   .withColumn("title_lower", lower($"title"))
   .withColumn("title_split", split($"title_lower", """[\s/]"""))
@@ -61,12 +87,35 @@ val df = spark.read.schema(schema).csv("/Users/warrenronsiek/Projects/SparkBoile
   .withColumn("location_standard", locationStandardizer($"location_no_tail"))
   .drop("location_lower", "location_no_state", "location_no_punct", "location_no_tail", "location")
   .withColumnRenamed("location_standard", "location")
-  .withColumn("salary_only_digit", regexp_replace($"salary", "[^0-9]", ""))
+  .withColumn("salary_no_cents", regexp_replace($"salary", """\..*""", ""))
+  .withColumn("salary_only_digit", regexp_replace($"salary_no_cents", "[^0-9]", ""))
   .withColumn("salary_double", $"salary_only_digit".cast(DoubleType))
-  .drop("salary", "salary_only_digit")
+  .drop("salary", "salary_only_digit", "salary_no_cents")
   .withColumnRenamed("salary_double", "salary")
+  .withColumn("gender_ethnicity_lower", lower($"gender_ethnicity"))
+  .withColumn("gender_ethnicity_split", split($"gender_ethnicity_lower", """[\s/]"""))
+  .drop("gender_ethnicity", "gender_ethnicity_lower")
+  .selectExpr("""transform(gender_ethnicity_split, x -> regexp_replace(x, "[^a-zA-Z]", "")) as gender_ethnicity""", "*")
+  .drop("gender_ethnicity_split")
+  .withColumn("id", monotonically_increasing_id())
 
-df
-  //  .groupBy("location_no_tail", "location_standard").count.orderBy($"count".desc)
-  //  .where($"location_standard" === "other").show(300)
-  .show(3)
+val rowReduction = (r1: Row, r2: Row) => {if (r1(2) == "unknown/other") r2 else r1}
+
+//  .map(row => GenderMap(row(0) match {case i: Int => i}, row(1) match {case g: String => g}, row(2) match {case ge: String => ge}))
+
+val rdd = df.select($"id", explode($"gender_ethnicity") as "ge")
+  .withColumn("ethnicity", ethnicityStandardizer($"ge"))
+  .rdd
+  .keyBy(row => row.get(0))
+  .reduceByKey(rowReduction)
+  .map(_._2)
+
+val df2 = spark.createDataFrame(rdd, StructType(Array(
+  StructField("id", LongType, nullable = false),
+  StructField("genEth", StringType, nullable = true),
+  StructField("ethnicity", StringType, nullable = true)
+)))
+
+val df3 = df.join(df2, Seq("id"), "left")
+
+df3.show(110)

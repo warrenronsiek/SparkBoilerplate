@@ -4,10 +4,10 @@ import com.typesafe.config.Config
 import net.ceedubs.ficus.Ficus._
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import schemas.MediaSalaries
-import transfomers.mediasalaries.{CleanExperience, CleanLocation, CleanTitles, DropBadCols}
+import transfomers.mediasalariesclean.{CleanExperience, CleanGenderEthnicity, CleanLocation, CleanSalary, CleanTitles, DropBadCols}
 import utils.ResourceReader
 
-class DemoPipelineMediaSalaries(configName: String)(implicit spark: SparkSession = SparkSession.builder.getOrCreate()) extends GenericPipeline {
+class MediaSalariesClean(configName: String)(implicit spark: SparkSession = SparkSession.builder.getOrCreate()) extends GenericPipeline {
   val resourceReader = new ResourceReader(configName)
   val config: Config = resourceReader.config
   val mediaSalariesFilePath: String = config.as[String]("filePath") match {
@@ -21,10 +21,12 @@ class DemoPipelineMediaSalaries(configName: String)(implicit spark: SparkSession
     new DropBadCols(),
     new CleanTitles(),
     new CleanExperience(),
-    new CleanLocation()
+    new CleanLocation(),
+    new CleanSalary(),
+    new CleanGenderEthnicity()
   ))
 }
 
-object DemoPipelineMediaSalaries {
-  def apply(configName: String): DemoPipelineMediaSalaries = new DemoPipelineMediaSalaries(configName)
+object MediaSalariesClean {
+  def apply(configName: String): MediaSalariesClean = new MediaSalariesClean(configName)
 }

@@ -1,4 +1,4 @@
-package transfomers.mediasalaries
+package transfomers.mediasalariesclean
 
 import org.apache.spark.sql.expressions.UserDefinedFunction
 import org.apache.spark.sql.functions.{lower, regexp_replace, udf}

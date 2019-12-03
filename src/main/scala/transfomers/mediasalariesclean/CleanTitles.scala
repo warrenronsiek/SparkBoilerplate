@@ -1,4 +1,4 @@
-package transfomers.mediasalaries
+package transfomers.mediasalariesclean
 
 import org.apache.spark.sql.functions.{lower, split}
 import org.apache.spark.sql.types.{ArrayType, StringType, StructField, StructType}
