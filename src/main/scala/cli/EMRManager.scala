@@ -103,6 +103,7 @@ class EMRManager {
         "spark.executor.instances" -> s"$numExecutors",
         "spark.executor.cores" -> s"$coresPerExecutor",
         "spark.default.parallelism" -> s"$totalAvailableCores",
+        "spark.sql.shuffle.partitions" -> s"$totalAvailableCores"
       ).asJava)
       .withClassification("capacity-scheduler")
       .withProperties(Map(
