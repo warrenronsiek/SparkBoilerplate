@@ -66,7 +66,7 @@ class EMRManager {
 
     val availableCoresPerNode: Int = EC2Data.ec2types(emrParams.instanceType).cores - 1 // -1 for the node manager's 1 core
     val totalAvailableCores: Int = availableCoresPerNode * emrParams.instanceCount
-    val coresPerExecutor: Int = List(3, 4, 5).reduce((a, b) => {
+    val coresPerExecutor: Int = List(3, 4, 5, 6).reduce((a, b) => {
       if (b % totalAvailableCores == 0) b
       else if (a % totalAvailableCores < b % totalAvailableCores) a else b
     })
@@ -99,26 +99,25 @@ class EMRManager {
     val configuration: Configuration = new Configuration()
       .withClassification("spark-defaults")
       .withProperties(Map(
-//        "spark.executor.memory" -> s"${memPerExecutor}g",
-//        "spark.executor.instances" -> s"$numExecutors",
-//        "spark.executor.cores" -> s"$coresPerExecutor",
+        "spark.executor.memory" -> s"${memPerExecutor}g",
+        "spark.executor.instances" -> s"$numExecutors",
+        "spark.executor.cores" -> s"$coresPerExecutor",
         "spark.default.parallelism" -> s"$totalAvailableCores",
-        "spark.dynamicAllocation.enabled" -> "true"
-//        "spark.executor.instances" -> "0"
       ).asJava)
       .withClassification("capacity-scheduler")
       .withProperties(Map(
+        "yarn.scheduler.increment-allocation-vcores" -> "1",
         "yarn.scheduler.capacity.resource-calculator" -> "org.apache.hadoop.yarn.util.resource.DominantResourceCalculator"
       ).asJava)
       .withClassification("spark")
       .withProperties(Map("maximizeResourceAllocation" -> "true").asJava)
       .withClassification("yarn-site")
       .withProperties(Map("log-aggregation-enable" -> "true").asJava)
-//      .withClassification("yarn-site")
-//      .withProperties(Map(
-//        "yarn.nodemanager.resource.memory-mb" -> s"$availableMemoryPerNode",
-//        "yarn.nodemanager.resource.cpu-vcores" -> s"$availableCoresPerNode"
-//      ).asJava)
+      .withClassification("yarn-site")
+      .withProperties(Map(
+        "yarn.nodemanager.resource.memory-mb" -> s"$memPerExecutor",
+        "yarn.nodemanager.resource.cpu-vcores" -> s"$coresPerExecutor"
+      ).asJava)
     val request: RunJobFlowRequest = new RunJobFlowRequest()
       .withName(emrParams.name)
       .withReleaseLabel("emr-5.28.0")
