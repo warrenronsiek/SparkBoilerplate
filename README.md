@@ -17,7 +17,7 @@ Features (WIP)
 Testing with Deequ
 ------------------
 [Deequ](https://github.com/awslabs/deequ) is a data testing library from AWS. The idea is to use it in integration
-tests to see if the data output from pipelines makes sense, but more importantly, Deequ is used to run tests _during runtime_.
+tests to see if the data output from com.warrenronsiek.pipelines makes sense, but more importantly, Deequ is used to run tests _during runtime_.
 The idea is that changes is pipeline logic may not be noticeable just on test data, and that these changes can have
 unforeseen consequences on your live data. Having Deequ do testing as part of the pipeline can works to mitigate
 these issues.
