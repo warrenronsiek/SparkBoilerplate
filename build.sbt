@@ -7,6 +7,7 @@ organization := "com.warren-r"
 mainClass in (Compile, run) := Some("scala.CLIEntryPoint")
 mainClass in (Compile, packageBin) := Some("scala.CLIEntryPoint")
 
+
 libraryDependencies ++= Seq(
   "org.apache.spark" %% "spark-core" % "2.4.4" % "provided",
   "org.apache.spark" %% "spark-sql" % "2.4.4" % "provided",
@@ -22,6 +23,8 @@ libraryDependencies ++= Seq(
 )
 
 test in assembly := {}
+
+assemblyJarName in assembly := "SparkBoilerplate.jar"
 
 assemblyMergeStrategy in assembly := {
   case PathList("META-INF", xs @ _*) => MergeStrategy.discard

@@ -2,6 +2,7 @@ package com.warrenronsiek.cli
 
 import java.io.File
 import java.util.concurrent.Future
+
 import com.amazonaws.AmazonClientException
 import com.amazonaws.auth.{AWSCredentials, AWSStaticCredentialsProvider}
 import com.amazonaws.auth.profile.ProfileCredentialsProvider
@@ -10,17 +11,19 @@ import com.amazonaws.regions.Regions
 import com.amazonaws.services.elasticmapreduce.model.{AddJobFlowStepsRequest, AddJobFlowStepsResult, Application, Configuration, HadoopJarStepConfig, InstanceGroupConfig, JobFlowInstancesConfig, RunJobFlowRequest, RunJobFlowResult, StepConfig, TerminateJobFlowsRequest, TerminateJobFlowsResult}
 import com.amazonaws.services.elasticmapreduce.util.StepFactory
 import com.amazonaws.services.elasticmapreduce.{AmazonElasticMapReduce, AmazonElasticMapReduceAsync, AmazonElasticMapReduceAsyncClientBuilder, AmazonElasticMapReduceClientBuilder}
-import com.amazonaws.services.s3.model.{PutObjectRequest, PutObjectResult}
+import com.amazonaws.services.s3.model.{ObjectMetadata, PutObjectRequest, PutObjectResult}
 import com.amazonaws.services.s3.transfer.{TransferManager, TransferManagerBuilder}
 import com.amazonaws.services.s3.{AmazonS3, AmazonS3ClientBuilder}
+import com.typesafe.config.Config
 import org.eclipse.jgit.lib.{ConfigConstants, RepositoryBuilder}
 import org.apache.log4j.Logger
-
+import com.warrenronsiek.utils.{ResourceReader, ResourceStream}
 import scala.collection.JavaConverters._
 
 class EMRManager {
   val logger: Logger = Logger.getLogger(this.getClass)
   val stateManager = StateManager()
+  val config: Config = new ResourceReader("emrmanager.conf").config
 
   private val credentialsProfile: AWSCredentials = try {
     new ProfileCredentialsProvider("default").getCredentials
@@ -66,14 +69,33 @@ class EMRManager {
 
     val availableCoresPerNode: Int = EC2Data.ec2types(emrParams.instanceType).cores - 1 // -1 for the node manager's 1 core
     val totalAvailableCores: Int = availableCoresPerNode * emrParams.instanceCount
-    val coresPerExecutor: Int = List(3, 4, 5, 6).reduce((a, b) => {
-      if (b % totalAvailableCores == 0) b
-      else if (a % totalAvailableCores < b % totalAvailableCores) a else b
-    })
+    val coresPerExecutor: Int = {
+      val optimalCoresPerExecutor: Int = List(3, 4, 5, 6).reduce((a, b) => {
+        if (b % totalAvailableCores == 0) b
+        else if (a % totalAvailableCores < b % totalAvailableCores) a else b
+      })
+      if (optimalCoresPerExecutor > availableCoresPerNode) {
+        availableCoresPerNode
+      } else {
+        optimalCoresPerExecutor
+      }
+    }
+    logger.info("coresPerExecutor: " + coresPerExecutor)
     val numExecutors: Int = Math.floor(totalAvailableCores / coresPerExecutor).toInt
+    logger.info("numExecutors: " + numExecutors)
     val availableMemoryPerNode: Double = EC2Data.ec2types(emrParams.instanceType).memory - 1 // -1 because 1 gb reserved for node manager
+    logger.info("availableMemoryPerNode: " + availableMemoryPerNode)
     val totalAvailableMemory: Double = availableMemoryPerNode * emrParams.instanceCount
-    val memPerExecutor: Double = Math.floor(totalAvailableMemory / numExecutors)
+    logger.info("totalAvailableMemory: " + totalAvailableMemory)
+    val memPerExecutor: Double = {
+      val optimalMemPerExecutor = Math.floor(totalAvailableMemory / numExecutors)
+      if (optimalMemPerExecutor > availableMemoryPerNode) {
+        availableMemoryPerNode
+      } else {
+        optimalMemPerExecutor
+      }
+    }
+    logger.info("memPerExecutor: " + memPerExecutor)
     val instancesConfig: JobFlowInstancesConfig = new JobFlowInstancesConfig()
       .withEc2SubnetId(emrParams.subnet)
       .withEc2KeyName(emrParams.key)
@@ -113,15 +135,15 @@ class EMRManager {
       .withClassification("spark")
       .withProperties(Map("maximizeResourceAllocation" -> "true").asJava)
       .withClassification("yarn-site")
-      .withProperties(Map("log-aggregation-enable" -> "true").asJava)
-      .withClassification("yarn-site")
       .withProperties(Map(
-        "yarn.nodemanager.resource.memory-mb" -> s"$memPerExecutor",
-        "yarn.nodemanager.resource.cpu-vcores" -> s"$coresPerExecutor"
+        "log-aggregation-enable" -> "true"
+//        "yarn.nodemanager.resource.memory-mb" -> s"${availableMemoryPerNode * 1024}",
+//        "yarn.nodemanager.resource.cpu-vcores" -> s"$availableCoresPerNode",
+//        "yarn.scheduler.maximum-allocation-mb" -> s"${memPerExecutor * 1024}"
       ).asJava)
     val request: RunJobFlowRequest = new RunJobFlowRequest()
       .withName(emrParams.name)
-      .withReleaseLabel("emr-5.28.0")
+      .withReleaseLabel("emr-6.0.0")
       .withSteps(enabledebugging)
       .withApplications(apps: _*)
       .withLogUri(emrParams.logUri)
@@ -152,29 +174,58 @@ class EMRManager {
     val repo = new RepositoryBuilder().readEnvironment().findGitDir().build()
     val branch: String = repo.getBranch
     val user: String = repo.getConfig.getString(ConfigConstants.CONFIG_USER_SECTION, null, "name")
-    val localJarPath = List(System.getProperty("user.dir"), "target", "scala-2.11", "SparkBoilerplate-assembly-0.1.jar").mkString("/")
+
+    /**
+     * Upload the jar
+     */
+
+    val localJarPath = List(System.getProperty("user.dir"), "target", "scala-2.11", "SparkBoilerplate.jar").mkString("/")
     val remoteJarPath = List("jars", user, s"$branch.jar").mkString("/")
     val putObjectRequest = new PutObjectRequest("spark-boilerplate", remoteJarPath, new File(localJarPath))
     var transferredBytes: Long = 0
     putObjectRequest.setGeneralProgressListener(new ProgressListener {
       override def progressChanged(progressEvent: ProgressEvent): Unit = {
         transferredBytes += progressEvent.getBytesTransferred
-        logger.info(s"Transferred MB: ${transferredBytes / 1000000}")
+        logger.debug(s"Transferred MB: ${transferredBytes / 1000000}")
       }
     })
     val upload = transferManager.upload(putObjectRequest)
     upload.waitForCompletion()
     logger.info("Completed jar upload")
 
+    /**
+     * Upload the script that copies the jar to the cluster
+     */
+
     val clusterId = stateManager.getClusters().head.clusterId
+    val copyJarsScriptLocation = s"s3://${config.getString("s3.staging-bucket-name")}/scripts/copy_jars.sh"
+    val metadata: ObjectMetadata = new ObjectMetadata()
+    metadata.setContentLength(19)
+    s3.putObject(new PutObjectRequest(
+      config.getString("s3.staging-bucket-name"),
+      copyJarsScriptLocation,
+      new ResourceStream("copy_jars.sh").stream,
+      metadata
+    ))
+    logger.info(s"uploaded the script to s3://${config.getString("s3.staging-bucket-name")}/$copyJarsScriptLocation")
+
+    /**
+     * Create EMR steps that run the job to copy the jar
+     */
+
     val copyJars: StepConfig = new StepConfig()
       .withName("Copy execution jar")
       .withActionOnFailure("TERMINATE_JOB_FLOW")
       .withHadoopJarStep(stepFactory
-        .newScriptRunnerStep("s3://spark-boilerplate/scripts/copy_jars.sh")
-        .withArgs("s3://spark-boilerplate/" + remoteJarPath, "/home/hadoop/" + remoteJarPath.split("/").last))
+        .newScriptRunnerStep(copyJarsScriptLocation)
+        .withArgs(s"s3://${config.getString("s3.staging-bucket-name")}/" + remoteJarPath, "/home/hadoop/" + remoteJarPath.split("/").last))
     logger.info("Submitted copy jar step")
     emr.addJobFlowSteps(new AddJobFlowStepsRequest(clusterId).withSteps(copyJars))
+
+    /**
+     * Add the steps to run the jar
+     */
+
     val jobFlowStep = emr.addJobFlowSteps(
       new AddJobFlowStepsRequest(clusterId)
         .withSteps(new StepConfig(pipelineName, new HadoopJarStepConfig()

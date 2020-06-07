@@ -24,7 +24,7 @@ class ResourceReader(configName: String) {
       .filter(entry => entry.getName.contains(configName))
       .map(entry => entry.toString).toList
     try {
-      val cfg_input = getClass.getResourceAsStream("/" + configs.head)
+      val cfg_input: InputStream = getClass.getResourceAsStream("/" + configs.head)
       val cfg = scala.io.Source.fromInputStream(cfg_input).mkString
       ConfigFactory.parseString(cfg)
     } catch {
